@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}Prediction History Log | CircuitAI Platform{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3">
+        <div>
+            <h2 class="text-white fw-bold mb-1"><i class="bi bi-clock-history text-info me-2"></i> Universal Prediction History Log</h2>
+            <p class="text-secondary mb-0">Records stored in SQLite database across all 14 circuit simulation runs.</p>
+        </div>
+        <div>
+            <form method="get" class="d-flex gap-2">
+                <select name="circuit" class="form-select form-select-sm" style="min-width: 180px;">
+                    <option value="">All 14 Circuits</option>
+                    {% for c in all_circuits %}
+                        <option value="{{ c.slug }}" {% if circuit_filter == c.slug %}selected{% endif %}>{{ c.title }}</option>
+                    {% endfor %}
+                </select>
+                <input type="text" name="q" value="{{ query }}" class="form-control form-control-sm" placeholder="Search title..." style="min-width: 160px;">
+                <button type="submit" class="btn btn-gradient-primary btn-sm px-3">
+                    <i class="bi bi-search"></i>
+                </button>
+                {% if query or circuit_filter %}
+                    <a href="{% url 'history' %}" class="btn btn-outline-secondary btn-sm">Clear</a>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <div class="glass-card p-0 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle mb-0 font-mono small" style="background: transparent;">
+                <thead class="text-uppercase text-secondary" style="font-size: 0.75rem;">
+                    <tr>
+                        <th scope="col" class="py-3 px-4"># ID</th>
+                        <th scope="col">Circuit Title</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">User</th>
+                        <th scope="col">Performance Index</th>
+                        <th scope="col" class="py-3 px-4">Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rec in page_obj %}
+                        <tr>
+                            <td class="px-4 fw-bold text-info">#{{ rec.id }}</td>
+                            <td>
+                                <a href="{% url 'circuit_detail' rec.circuit_slug %}" class="text-white text-decoration-none fw-bold">
+                                    {{ rec.circuit_title }}
+                                </a>
+                            </td>
+                            <td><span class="badge bg-secondary bg-opacity-25 text-info border border-info border-opacity-25">{{ rec.circuit_category }}</span></td>
+                            <td>
+                                {% if rec.user %}
+                                    <span class="badge bg-primary bg-opacity-25 text-primary"><i class="bi bi-person me-1"></i>{{ rec.user.username }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary bg-opacity-25 text-muted">Guest</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="badge bg-success bg-opacity-25 text-success">{{ rec.performance_score }}%</span></td>
+                            <td class="px-4 text-secondary">{{ rec.created_at|date:"Y-m-d H:i" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-secondary">
+                                <i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i>
+                                No simulation history records found.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+            <div class="p-3 border-top border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
+                <span class="text-secondary small">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                </span>
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item"><a class="page-link bg-dark text-white border-secondary" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if circuit_filter %}&circuit={{ circuit_filter }}{% endif %}">Previous</a></li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link bg-dark text-muted border-secondary">Previous</span></li>
+                    {% endif %}
+
+                    {% for i in page_obj.paginator.page_range %}
+                        {% if page_obj.number == i %}
+                            <li class="page-item active"><span class="page-link bg-primary border-primary">{{ i }}</span></li>
+                        {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                            <li class="page-item"><a class="page-link bg-dark text-white border-secondary" href="?page={{ i }}{% if query %}&q={{ query }}{% endif %}{% if circuit_filter %}&circuit={{ circuit_filter }}{% endif %}">{{ i }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item"><a class="page-link bg-dark text-white border-secondary" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if circuit_filter %}&circuit={{ circuit_filter }}{% endif %}">Next</a></li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link bg-dark text-muted border-secondary">Next</span></li>
+                    {% endif %}
+                </ul>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

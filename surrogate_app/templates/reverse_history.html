@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}Reverse Design History | CircuitAI CAD Suite{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    
+    <!-- Top Header Bar -->
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-25">Audit History</span>
+                <span class="text-muted small">&bull; Saved AI Reverse Design Session Records</span>
+            </div>
+            <h2 class="text-white fw-bold mb-0">
+                <i class="bi bi-journal-check text-warning me-2"></i> AI Reverse Design History
+            </h2>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'reverse_design' %}" class="btn btn-gradient-primary btn-sm rounded-pill px-3" style="background: linear-gradient(135deg, #7c3aed, #2563eb);">
+                <i class="bi bi-magic me-1"></i> New Reverse Design
+            </a>
+            <a href="{% url 'home' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="bi bi-arrow-left me-1"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter & Search Bar -->
+    <div class="glass-card p-3 mb-4">
+        <form method="get" action="{% url 'reverse_history' %}" class="row g-3 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" class="form-control bg-dark text-white border-secondary" placeholder="Search by circuit name..." value="{{ query }}">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <select name="circuit" class="form-select form-select-sm bg-dark text-white border-secondary">
+                    <option value="">All Circuit Types</option>
+                    {% for c in all_circuits %}
+                        <option value="{{ c.slug }}" {% if circuit_filter == c.slug %}selected{% endif %}>{{ c.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm rounded-pill flex-grow-1">Filter Records</button>
+                <a href="{% url 'reverse_history' %}" class="btn btn-outline-secondary btn-sm rounded-pill"><i class="bi bi-x-circle"></i></a>
+            </div>
+        </form>
+    </div>
+
+    <!-- History Table -->
+    <div class="glass-card p-4">
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-dark table-hover align-middle mb-0 font-mono small border border-secondary border-opacity-25 rounded-3">
+                    <thead class="table-dark text-uppercase text-muted" style="font-size: 0.75rem;">
+                        <tr>
+                            <th>Record ID &amp; Date</th>
+                            <th>Circuit Title</th>
+                            <th>Algorithm</th>
+                            <th>Series</th>
+                            <th>Optimization Score</th>
+                            <th>Total Error</th>
+                            <th>Execution Time</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rec in page_obj %}
+                            <tr>
+                                <td>
+                                    <span class="fw-bold text-info">#REV-{{ rec.id }}</span>
+                                    <div class="text-muted" style="font-size: 0.65rem;">{{ rec.created_at|date:"Y-m-d H:i" }}</div>
+                                </td>
+                                <td class="fw-bold text-white">{{ rec.circuit_title }}</td>
+                                <td><span class="badge bg-purple bg-opacity-25 text-purple border border-purple border-opacity-50" style="color: #a855f7;">{{ rec.algorithm_used }}</span></td>
+                                <td><span class="badge bg-secondary bg-opacity-25 text-light">{{ rec.comp_series }}</span></td>
+                                <td><span class="fw-bold text-success">{{ rec.performance_score }}%</span></td>
+                                <td><span class="text-warning">{{ rec.total_error }}%</span></td>
+                                <td><span class="text-muted">{{ rec.optimization_time_ms }} ms</span></td>
+                                <td class="text-end">
+                                    <a href="{% url 'reverse_export_pdf' rec.id %}" class="btn btn-outline-danger btn-xs rounded-pill px-2 py-1" style="font-size: 0.7rem;">
+                                        <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+                <nav class="mt-4">
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item"><a class="page-link bg-dark text-white border-secondary" href="?page={{ page_obj.previous_page_number }}&circuit={{ circuit_filter }}&q={{ query }}">Previous</a></li>
+                        {% endif %}
+                        <li class="page-item disabled"><span class="page-link bg-dark text-muted border-secondary">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+                        {% if page_obj.has_next %}
+                            <li class="page-item"><a class="page-link bg-dark text-white border-secondary" href="?page={{ page_obj.next_page_number }}&circuit={{ circuit_filter }}&q={{ query }}">Next</a></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-journal-x fs-1 text-muted d-block mb-2"></i>
+                <h5 class="text-white">No Reverse Design Records Found</h5>
+                <p class="text-secondary small">Run your first AI Reverse Circuit Design optimization to save session history.</p>
+                <a href="{% url 'reverse_design' %}" class="btn btn-gradient-primary btn-sm rounded-pill mt-2">Start Reverse Design</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

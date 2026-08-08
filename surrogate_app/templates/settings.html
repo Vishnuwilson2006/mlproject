@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}CAD Settings | CircuitAI Platform{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="glass-card p-4">
+                <h3 class="text-white fw-bold mb-4 pb-2 border-bottom border-secondary border-opacity-25">
+                    <i class="bi bi-sliders me-2 text-primary"></i> Simulation & CAD Engine Settings
+                </h3>
+
+                <div class="mb-4">
+                    <h5 class="text-white h6 fw-bold mb-3"><i class="bi bi-cpu text-info me-2"></i> ML Surrogate Engine</h5>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="flexSwitchCheckChecked" checked>
+                        <label class="form-check-label text-light small" for="flexSwitchCheckChecked">Enable Real-Time Physics Surrogate Inference</label>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="flexSwitchCheckChecked2" checked>
+                        <label class="form-check-label text-light small" for="flexSwitchCheckChecked2">Automatic Database History Logging</label>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="text-white h6 fw-bold mb-3"><i class="bi bi-palette text-warning me-2"></i> UI Theme & CAD Aesthetics</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Theme Mode</label>
+                            <select class="form-select form-select-sm">
+                                <option selected>Cadence Virtuoso Dark (#0F172A)</option>
+                                <option>MATLAB App Designer Contrast</option>
+                                <option>Keysight ADS Midnight</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Default Units System</label>
+                            <select class="form-select form-select-sm">
+                                <option selected>SI Units (Ω, µF, mH, Hz, dB)</option>
+                                <option>Imperial Units</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-3 border-top border-secondary border-opacity-25">
+                    <button type="button" class="btn btn-gradient-primary btn-sm rounded-pill" onclick="alert('Settings saved!')">Save CAD Preferences</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

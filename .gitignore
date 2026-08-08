@@ -1,0 +1,25 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Large ML model file (>100MB, re-generatable via python train_model.py)
+circuit_model.pkl
+
+# Django local database & sqlite
+db.sqlite3
+db.sqlite3-journal
+
+# Environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE / Editor settings
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db

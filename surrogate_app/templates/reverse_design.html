@@ -1,0 +1,484 @@
+{% extends 'base.html' %}
+
+{% block title %}AI Reverse Circuit Design | CircuitAI CAD Platform{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    
+    <!-- Top Header Bar -->
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-purple bg-opacity-25 text-purple border border-purple border-opacity-25" style="color: #a855f7;">AI Reverse Design Module</span>
+                <span class="text-muted small">&bull; Target Specifications &rarr; GA/PSO Optimizer &rarr; Optimal Component Values</span>
+            </div>
+            <h2 class="text-white fw-bold mb-0">
+                <i class="bi bi-magic me-2" style="color: #a855f7;"></i> AI Reverse Circuit Design Engine
+            </h2>
+        </div>
+        <div class="d-flex gap-2">
+            {% if rev_result and saved_record %}
+                <a href="{% url 'reverse_export_pdf' saved_record.id %}" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> Download Engineering Report (PDF)
+                </a>
+            {% endif %}
+            <a href="{% url 'reverse_history' %}" class="btn btn-outline-warning btn-sm rounded-pill px-3">
+                <i class="bi bi-journal-check me-1"></i> Reverse History
+            </a>
+            <a href="{% url 'home' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="bi bi-arrow-left me-1"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="row g-4 mb-4">
+        <!-- Left Panel: Circuit Selector, Dynamic Target Specs & Optimization Settings -->
+        <div class="col-lg-5">
+            <div class="glass-card p-4">
+                <h4 class="text-white h5 mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+                    <i class="bi bi-sliders text-primary me-2"></i> Reverse Design Specification Inputs
+                </h4>
+
+                <form method="post" id="reverseForm">
+                    {% csrf_token %}
+
+                    <!-- 1. Circuit Selection -->
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small fw-bold">1. SELECT CIRCUIT ARCHITECTURE</label>
+                        <select name="circuit_slug" id="circuitSelector" class="form-select bg-dark text-white border-secondary" onchange="onCircuitChange(this.value)">
+                            {% for c in all_circuits %}
+                                <option value="{{ c.slug }}" {% if selected_slug == c.slug %}selected{% endif %}>
+                                    {{ c.title }} ({{ c.category }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- 2. Dynamic Target Performance Inputs Container -->
+                    <div class="mb-4 p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25">
+                        <small class="text-uppercase text-info font-mono fw-bold d-block mb-2" style="font-size: 0.72rem;">
+                            2. TARGET OUTPUT PERFORMANCE SPECIFICATIONS
+                        </small>
+                        <div id="dynamicTargetsContainer" class="row g-3">
+                            <!-- Populated dynamically by JavaScript -->
+                            {% for item in target_schema %}
+                                <div class="col-md-6">
+                                    <label class="form-label text-secondary small font-mono">{{ item.label }} ({{ item.unit }})</label>
+                                    <input type="number" step="any" name="target_{{ item.name }}" class="form-control form-control-sm bg-dark text-white border-secondary" value="{{ item.default }}">
+                                    <div class="d-flex justify-content-between align-items-center mt-1">
+                                        <small class="text-muted" style="font-size: 0.65rem;">Weight:</small>
+                                        <input type="range" name="weight_{{ item.name }}" min="0.1" max="5.0" step="0.1" value="1.0" class="form-range w-50" title="Importance Weight">
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- 3. Optimization Algorithm & Settings -->
+                    <div class="mb-4 p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25">
+                        <small class="text-uppercase text-warning font-mono fw-bold d-block mb-2" style="font-size: 0.72rem;">
+                            3. OPTIMIZATION ALGORITHM &amp; CONSTRAINTS
+                        </small>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-secondary small">Algorithm</label>
+                                <select name="algorithm" class="form-select form-select-sm bg-dark text-white border-secondary">
+                                    <option value="Genetic Algorithm" {% if rev_result and rev_result.algorithm_used == 'Genetic Algorithm' %}selected{% endif %}>Genetic Algorithm (GA)</option>
+                                    <option value="Particle Swarm Optimization" {% if rev_result and rev_result.algorithm_used == 'Particle Swarm Optimization' %}selected{% endif %}>Particle Swarm Optimization (PSO)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-secondary small">Component Series</label>
+                                <select name="comp_series" class="form-select form-select-sm bg-dark text-white border-secondary">
+                                    <option value="E24" selected>E24 Standard (5%)</option>
+                                    <option value="E12">E12 Standard (10%)</option>
+                                    <option value="E96">E96 Precision (1%)</option>
+                                    <option value="Any">Any Continuous Value</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-secondary small">Population Size</label>
+                                <input type="number" name="pop_size" class="form-control form-control-sm bg-dark text-white border-secondary" value="40" min="10" max="200">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-secondary small">Max Iterations</label>
+                                <input type="number" name="max_iter" class="form-control form-control-sm bg-dark text-white border-secondary" value="60" min="10" max="500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trigger Button -->
+                    <button type="submit" class="btn btn-gradient-primary w-100 py-3 text-white fw-bold shadow" style="background: linear-gradient(135deg, #7c3aed, #2563eb);">
+                        <i class="bi bi-magic me-2"></i> Generate Optimal Circuit Design
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right Panel: Results, Target vs Predicted Table, Metrics Gauges, XAI & 3D PCB View -->
+        <div class="col-lg-7">
+            {% if rev_result %}
+                <!-- Results Container Card -->
+                <div class="glass-card p-4 mb-4">
+                    <!-- Status Banner -->
+                    <div class="alert {% if rev_result.is_feasible %}alert-success bg-success bg-opacity-10 border-success{% else %}alert-danger bg-danger bg-opacity-10 border-danger{% endif %} text-white mb-4 d-flex align-items-center justify-content-between rounded-3 p-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi {% if rev_result.is_feasible %}bi-check-circle-fill text-success fs-4{% else %}bi-exclamation-triangle-fill text-danger fs-4{% endif %}"></i>
+                            <div>
+                                <h5 class="mb-0 fw-bold">{{ rev_result.feasibility_status }}</h5>
+                                <small class="text-muted">Algorithm: {{ rev_result.algorithm_used }} ({{ rev_result.comp_series }} Series) | Time: {{ rev_result.optimization_time_ms }} ms</small>
+                            </div>
+                        </div>
+                        <span class="badge {% if rev_result.is_feasible %}bg-success{% else %}bg-danger{% endif %} px-3 py-2 fs-6">
+                            Score: {{ rev_result.score }}%
+                        </span>
+                    </div>
+
+                    <!-- Recommended Component Values Section -->
+                    <h5 class="text-white h6 mb-3"><i class="bi bi-cpu text-warning me-2"></i> Recommended Component Values</h5>
+                    <div class="row g-3 mb-4">
+                        {% for comp, val in rev_result.recommended_components.items %}
+                            <div class="col-md-4 col-sm-6">
+                                <div class="p-3 rounded-3 bg-dark bg-opacity-60 border border-warning border-opacity-40 text-center shadow-sm">
+                                    <small class="text-uppercase text-muted font-mono d-block mb-1" style="font-size: 0.7rem;">{{ comp }}</small>
+                                    <div class="fs-4 fw-bold text-warning font-mono">{{ val }}</div>
+                                    <small class="text-secondary" style="font-size: 0.65rem;">Standard {{ rev_result.comp_series }} Series</small>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Target vs Predicted Comparison Table -->
+                    <h5 class="text-white h6 mb-3"><i class="bi bi-table text-info me-2"></i> Target vs ML Predicted Performance</h5>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-dark table-hover align-middle border border-secondary border-opacity-25 rounded-3 overflow-hidden">
+                            <thead class="table-dark text-uppercase small font-mono">
+                                <tr>
+                                    <th>Parameter</th>
+                                    <th class="text-center">Target</th>
+                                    <th class="text-center">Predicted</th>
+                                    <th class="text-center">Error %</th>
+                                    <th class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in rev_result.target_comparison_table %}
+                                    <tr>
+                                        <td class="fw-bold">{{ row.label }}</td>
+                                        <td class="text-center font-mono">{{ row.target }} {{ row.unit }}</td>
+                                        <td class="text-center font-mono fw-bold text-info">{{ row.predicted }} {{ row.unit }}</td>
+                                        <td class="text-center font-mono">{{ row.error_pct }}%</td>
+                                        <td class="text-center">
+                                            <span class="badge bg-{{ row.status_color }} bg-opacity-25 text-{{ row.status_color }} border border-{{ row.status_color }} border-opacity-50">
+                                                {{ row.status_text }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Optimization Metrics Cards & Gauge -->
+                    <div class="row align-items-center p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 mb-4">
+                        <div class="col-sm-5 text-center">
+                            <canvas id="revGaugeCanvas" width="160" height="100" data-score="{{ rev_result.score }}"></canvas>
+                            <div class="fw-bold text-success font-mono mt-1 fs-5">{{ rev_result.score }}%</div>
+                            <small class="text-muted font-mono" style="font-size: 0.65rem;">SYNTHESIS SCORE</small>
+                        </div>
+                        <div class="col-sm-7 mt-3 mt-sm-0">
+                            <div class="row g-2 text-center font-mono small">
+                                <div class="col-6">
+                                    <div class="p-2 bg-dark rounded border border-secondary border-opacity-25">
+                                        <span class="text-muted d-block" style="font-size: 0.65rem;">CONFIDENCE</span>
+                                        <strong class="text-info">{{ rev_result.confidence }}%</strong>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 bg-dark rounded border border-secondary border-opacity-25">
+                                        <span class="text-muted d-block" style="font-size: 0.65rem;">TOTAL ERROR</span>
+                                        <strong class="text-warning">{{ rev_result.total_error_pct }}%</strong>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 bg-dark rounded border border-secondary border-opacity-25">
+                                        <span class="text-muted d-block" style="font-size: 0.65rem;">ITERATIONS</span>
+                                        <strong class="text-purple" style="color: #a855f7;">{{ rev_result.iterations }}</strong>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 bg-dark rounded border border-secondary border-opacity-25">
+                                        <span class="text-muted d-block" style="font-size: 0.65rem;">EXEC TIME</span>
+                                        <strong class="text-success">{{ rev_result.optimization_time_ms }} ms</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Explainable AI (XAI) Section -->
+                    <div class="p-3 bg-dark bg-opacity-60 rounded-3 border border-secondary border-opacity-25 mb-4">
+                        <h6 class="text-white fw-bold mb-2"><i class="bi bi-lightbulb text-warning me-1"></i> Explainable AI (XAI) Synthesis Rationale</h6>
+                        <p class="text-secondary small mb-2">{{ rev_result.xai_breakdown.explanation_text }}</p>
+                        <div class="d-flex align-items-center gap-2 flex-wrap font-mono small">
+                            <span class="text-muted" style="font-size: 0.7rem;">Component Influence Sensitivity:</span>
+                            {% for item in rev_result.xai_breakdown.importance_pcts %}
+                                <span class="badge bg-secondary bg-opacity-25 text-info border border-info border-opacity-25">
+                                    {{ item.component }}: {{ item.importance_pct }}%
+                                </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Interactive Convergence Graph (Chart.js Zoom/Pan & PNG Download) -->
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <small class="text-uppercase text-muted font-mono fw-bold" style="font-size: 0.75rem;">
+                                <i class="bi bi-graph-up-arrow text-primary me-1"></i> GA/PSO OPTIMIZATION CONVERGENCE CURVE
+                            </small>
+                            <button class="btn btn-outline-light btn-xs rounded-pill px-2 py-0" onclick="downloadChartPNG('convergenceChart', 'Convergence_Curve.png')" style="font-size: 0.65rem;">
+                                <i class="bi bi-download me-1"></i> Download PNG
+                            </button>
+                        </div>
+                        <div style="position: relative; height: 220px;" class="p-2 bg-dark bg-opacity-60 rounded border border-secondary border-opacity-25">
+                            <canvas id="convergenceChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Vector SVG Schematic with Updated Component Labels -->
+                    <div class="mb-4">
+                        <small class="text-uppercase text-muted font-mono fw-bold d-block mb-2" style="font-size: 0.75rem;">INTERACTIVE VECTOR SCHEMATIC DIAGRAM</small>
+                        <div class="schematic-box text-center p-2 bg-dark bg-opacity-50 rounded border border-secondary border-opacity-25">
+                            {{ diagram_svg|safe }}
+                        </div>
+                    </div>
+
+                    <!-- 3D Circuit PCB Interactive View (Three.js) -->
+                    <div>
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <small class="text-uppercase text-muted font-mono fw-bold" style="font-size: 0.75rem;">
+                                <i class="bi bi-box-seam text-success me-1"></i> 3D PCB CIRCUIT VIEW (THREE.JS)
+                            </small>
+                            <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25" style="font-size: 0.65rem;">Interactive Drag / Rotate / Zoom</span>
+                        </div>
+                        <div id="threeCanvasContainer" style="width: 100%; height: 260px; background: #070b14; border-radius: 8px; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+                            <!-- Three.js canvas renders here -->
+                            <div class="position-absolute top-0 start-0 p-2 text-muted font-mono" style="font-size: 0.65rem; pointer-events: none;">
+                                Drag mouse to rotate 3D PCB | Scroll to zoom
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            {% else %}
+                <div class="glass-card p-4 h-100 d-flex flex-column align-items-center justify-content-center text-center py-5">
+                    <div class="kpi-icon bg-purple bg-opacity-10 text-purple mb-3" style="width: 72px; height: 72px; font-size: 2.25rem; color: #a855f7; background: rgba(124,58,237,0.15);">
+                        <i class="bi bi-magic"></i>
+                    </div>
+                    <h4 class="text-white h5">Ready for AI Reverse Design</h4>
+                    <p class="text-secondary small max-w-xs mb-4" style="max-width: 360px;">
+                        Select your target circuit performance outputs on the left and click <strong>Generate Optimal Circuit</strong> to run Genetic Algorithm or Particle Swarm Optimization.
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const targetSchemas = JSON.parse('{{ target_schema_json|escapejs }}');
+
+    function onCircuitChange(slug) {
+        const container = document.getElementById('dynamicTargetsContainer');
+        if (!container || !targetSchemas[slug]) return;
+
+        const fields = targetSchemas[slug];
+        let html = '';
+
+        fields.forEach(f => {
+            html += `
+                <div class="col-md-6">
+                    <label class="form-label text-secondary small font-mono">${f.label} (${f.unit})</label>
+                    <input type="number" step="any" name="target_${f.name}" class="form-control form-control-sm bg-dark text-white border-secondary" value="${f.default}">
+                    <div class="d-flex justify-content-between align-items-center mt-1">
+                        <small class="text-muted" style="font-size: 0.65rem;">Weight:</small>
+                        <input type="range" name="weight_${f.name}" min="0.1" max="5.0" step="0.1" value="1.0" class="form-range w-50" title="Importance Weight">
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // 1. Render Reverse Gauge Canvas
+        const gaugeCanvas = document.getElementById('revGaugeCanvas');
+        if (gaugeCanvas) {
+            const ctx = gaugeCanvas.getContext('2d');
+            const score = parseFloat(gaugeCanvas.dataset.score || 95.0);
+            
+            ctx.beginPath();
+            ctx.arc(80, 80, 60, mathToRad(180), mathToRad(360));
+            ctx.lineWidth = 12;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.stroke();
+
+            const scoreAngle = 180 + (score / 100) * 180;
+            ctx.beginPath();
+            ctx.arc(80, 80, 60, mathToRad(180), mathToRad(scoreAngle));
+            ctx.lineWidth = 12;
+            
+            let grad = ctx.createLinearGradient(0, 0, 160, 0);
+            grad.addColorStop(0, '#7c3aed');
+            grad.addColorStop(1, '#10b981');
+            ctx.strokeStyle = grad;
+            ctx.stroke();
+        }
+
+        function mathToRad(deg) { return (deg * Math.PI) / 180; }
+
+        // 2. Render Convergence Curve Chart
+        const convCanvas = document.getElementById('convergenceChart');
+        if (convCanvas) {
+            const ctxConv = convCanvas.getContext('2d');
+            
+            {% if rev_result and rev_result.convergence_history %}
+                const convData = JSON.parse('{{ rev_result.convergence_history|escapejs }}');
+                const iterLabels = convData.map(d => 'Iter ' + d.iteration);
+                const errValues = convData.map(d => d.error);
+            {% else %}
+                const iterLabels = ['Iter 1', 'Iter 10', 'Iter 20', 'Iter 30', 'Iter 40', 'Iter 50', 'Iter 60'];
+                const errValues = [45.2, 28.4, 14.1, 8.2, 3.5, 1.2, 0.65];
+            {% endif %}
+
+            window.convChart = new Chart(ctxConv, {
+                type: 'line',
+                data: {
+                    labels: iterLabels,
+                    datasets: [{
+                        label: 'Total Optimization Error (%)',
+                        data: errValues,
+                        borderColor: '#a855f7',
+                        backgroundColor: 'rgba(168, 85, 247, 0.15)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#a855f7' }, title: { display: true, text: 'Error (%)', color: '#a855f7' } }
+                    },
+                    plugins: { legend: { labels: { color: '#f8fafc' } } }
+                }
+            });
+        }
+
+        // 3. Render Three.js 3D PCB View
+        initThreeJsPcb();
+    });
+
+    function downloadChartPNG(chartId, filename) {
+        const chartCanvas = document.getElementById(chartId);
+        if (!chartCanvas) return;
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = chartCanvas.toDataURL('image/png');
+        link.click();
+    }
+
+    // Three.js 3D PCB Interactive Viewer implementation
+    function initThreeJsPcb() {
+        const container = document.getElementById('threeCanvasContainer');
+        if (!container || typeof THREE === 'undefined') return;
+
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x070b14);
+
+        const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        camera.position.set(0, 8, 12);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(width, height);
+        container.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0x38bdf8, 0.8);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
+
+        // 3D PCB Board Substrate (Green)
+        const pcbGeo = new THREE.BoxGeometry(8, 0.2, 5);
+        const pcbMat = new THREE.MeshStandardMaterial({ color: 0x059669, roughness: 0.4 });
+        const pcbMesh = new THREE.Mesh(pcbGeo, pcbMat);
+        scene.add(pcbMesh);
+
+        // IC Chip (Black)
+        const icGeo = new THREE.BoxGeometry(2, 0.4, 1.5);
+        const icMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.2 });
+        const icMesh = new THREE.Mesh(icGeo, icMat);
+        icMesh.position.set(0, 0.3, 0);
+        pcbMesh.add(icMesh);
+
+        // 3D Resistors (Cylinders)
+        const rMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6 });
+        const rGeo = new THREE.CylinderGeometry(0.2, 0.2, 1, 16);
+
+        const r1 = new THREE.Mesh(rGeo, rMat);
+        r1.rotation.z = Math.PI / 2;
+        r1.position.set(-2.5, 0.3, 1.5);
+        pcbMesh.add(r1);
+
+        const r2 = new THREE.Mesh(rGeo, rMat);
+        r2.rotation.z = Math.PI / 2;
+        r2.position.set(2.5, 0.3, 1.5);
+        pcbMesh.add(r2);
+
+        // 3D Capacitor (Cyan Cylinder)
+        const cMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4 });
+        const cGeo = new THREE.CylinderGeometry(0.35, 0.35, 1.2, 16);
+        const c1 = new THREE.Mesh(cGeo, cMat);
+        c1.position.set(-2.5, 0.7, -1.5);
+        pcbMesh.add(c1);
+
+        // Mouse Drag Rotation Logic
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+
+        container.addEventListener('mousedown', e => { isDragging = true; });
+        container.addEventListener('mouseup', e => { isDragging = false; });
+        container.addEventListener('mousemove', e => {
+            if (!isDragging) return;
+            const deltaMove = { x: e.offsetX - previousMousePosition.x, y: e.offsetY - previousMousePosition.y };
+            pcbMesh.rotation.y += deltaMove.x * 0.01;
+            pcbMesh.rotation.x += deltaMove.y * 0.01;
+            previousMousePosition = { x: e.offsetX, y: e.offsetY };
+        });
+
+        // Continuous subtle animation
+        function animate() {
+            requestAnimationFrame(animate);
+            if (!isDragging) {
+                pcbMesh.rotation.y += 0.003;
+            }
+            renderer.render(scene, camera);
+        }
+        animate();
+    }
+</script>
+{% endblock %}

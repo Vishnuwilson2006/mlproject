@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ category.name }} Category | CircuitAI{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <span class="badge bg-secondary bg-opacity-25 text-info border border-info border-opacity-25 mb-1">Circuit Category</span>
+            <h2 class="text-white fw-bold mb-0">
+                <i class="bi {{ category.icon }} text-primary me-2"></i> {{ category.name }}
+            </h2>
+        </div>
+        <a href="{% url 'home' %}" class="btn btn-outline-secondary btn-sm rounded-pill">
+            <i class="bi bi-arrow-left me-1"></i> Back to All Categories
+        </a>
+    </div>
+
+    <div class="row g-4">
+        {% for c in category.circuits %}
+            <div class="col-xl-4 col-md-6">
+                <div class="circuit-card d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="badge bg-primary bg-opacity-25 text-primary p-2 rounded-3">
+                                <i class="bi {{ c.icon }} fs-5"></i>
+                            </div>
+                            <span class="badge bg-dark border border-secondary text-secondary small">{{ category.name }}</span>
+                        </div>
+                        <h4 class="text-white h5 fw-bold mb-2">{{ c.title }}</h4>
+                        <p class="text-secondary small mb-3">{{ c.description }}</p>
+
+                        <div class="p-2 bg-dark bg-opacity-50 rounded border border-secondary border-opacity-25 mb-3 font-mono text-light small">
+                            <div class="text-muted fw-bold mb-1" style="font-size: 0.75rem;">INPUT PARAMETERS:</div>
+                            <div class="d-flex flex-wrap gap-1">
+                                {% for inp in c.inputs %}
+                                    <span class="badge bg-secondary bg-opacity-25 text-light border border-secondary border-opacity-50">{{ inp.name }} ({{ inp.unit }})</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="{% url 'circuit_detail' c.slug %}" class="btn btn-gradient-primary w-100 btn-sm rounded-pill mt-2">
+                        Open Circuit Simulator <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

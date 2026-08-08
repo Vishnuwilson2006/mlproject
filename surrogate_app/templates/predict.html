@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+
+{% block title %}Predict Circuit Performance | ECE ML Surrogate{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <div>
+                    <h2 class="text-white fw-bold mb-1"><i class="bi bi-lightning-charge text-warning me-2"></i> Circuit Performance Prediction</h2>
+                    <p class="text-secondary mb-0">Enter passive component values to evaluate transistor amplifier performance.</p>
+                </div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-outline-light btn-sm dropdown-toggle rounded-pill" data-bs-toggle="dropdown">
+                        <i class="bi bi-magic me-1"></i> Load Presets
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                        <li><button class="dropdown-item" type="button" onclick="loadPreset(47000, 10000, 4700, 1000, 1.0, 2.2)">Standard CE Stage</button></li>
+                        <li><button class="dropdown-item" type="button" onclick="loadPreset(68000, 12000, 8200, 470, 0.47, 1.0)">High Gain Stage</button></li>
+                        <li><button class="dropdown-item" type="button" onclick="loadPreset(22000, 4700, 2200, 220, 4.7, 4.7)">Wide Bandwidth Stage</button></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <!-- Form Column -->
+                <div class="col-lg-6">
+                    <div class="glass-card p-4 h-100">
+                        <h4 class="text-white h5 mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+                            <i class="bi bi-sliders me-2 text-primary"></i> Component Values
+                        </h4>
+
+                        <form method="post" id="predictForm" class="needs-validation" novalidate>
+                            {% csrf_token %}
+                            
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label" for="id_r1">R1 (Biasing Ohms)</label>
+                                    {{ form.r1 }}
+                                    {% if form.r1.errors %}
+                                        <div class="text-danger small mt-1">{{ form.r1.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label" for="id_r2">R2 (Biasing Ohms)</label>
+                                    {{ form.r2 }}
+                                    {% if form.r2.errors %}
+                                        <div class="text-danger small mt-1">{{ form.r2.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label" for="id_rc">RC (Collector Ohms)</label>
+                                    {{ form.rc }}
+                                    {% if form.rc.errors %}
+                                        <div class="text-danger small mt-1">{{ form.rc.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label" for="id_re">RE (Emitter Ohms)</label>
+                                    {{ form.re }}
+                                    {% if form.re.errors %}
+                                        <div class="text-danger small mt-1">{{ form.re.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label" for="id_c1">C1 Input Cap (&mu;F)</label>
+                                    {{ form.c1 }}
+                                    {% if form.c1.errors %}
+                                        <div class="text-danger small mt-1">{{ form.c1.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label" for="id_c2">C2 Output Cap (&mu;F)</label>
+                                    {{ form.c2 }}
+                                    {% if form.c2.errors %}
+                                        <div class="text-danger small mt-1">{{ form.c2.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="mt-4 pt-2">
+                                <button type="submit" class="btn btn-gradient w-100 py-3">
+                                    <i class="bi bi-cpu-fill me-2"></i> Calculate Performance Metrics
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Results Column -->
+                <div class="col-lg-6">
+                    {% if result %}
+                        <div class="glass-card p-4 h-100">
+                            <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+                                <h4 class="text-white h5 mb-0">
+                                    <i class="bi bi-check-circle-fill text-success me-2"></i> Predicted Results
+                                </h4>
+                                <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50">Record #{{ result.record_id }} Saved</span>
+                            </div>
+
+                            <div class="d-flex flex-column gap-3">
+                                <!-- Gain Card -->
+                                <div class="glass-card p-3 result-card gain-card">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <small class="text-uppercase text-secondary fw-semibold">Voltage Gain ($A_v$)</small>
+                                            <div class="result-val text-primary">{{ result.gain }} <span class="fs-5 text-secondary fw-normal">dB</span></div>
+                                        </div>
+                                        <div class="kpi-icon bg-primary bg-opacity-25 text-primary">
+                                            <i class="bi bi-graph-up"></i>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Cutoff Freq Card -->
+                                <div class="glass-card p-3 result-card freq-card">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <small class="text-uppercase text-secondary fw-semibold">Cutoff Frequency ($f_c$)</small>
+                                            <div class="result-val text-success">{{ result.cutoff_frequency }} <span class="fs-5 text-secondary fw-normal">Hz</span></div>
+                                        </div>
+                                        <div class="kpi-icon bg-success bg-opacity-25 text-success">
+                                            <i class="bi bi-activity"></i>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Phase Margin Card -->
+                                <div class="glass-card p-3 result-card pm-card">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <small class="text-uppercase text-secondary fw-semibold">Phase Margin ($\phi_m$)</small>
+                                            <div class="result-val text-purple" style="color: #a855f7;">{{ result.phase_margin }} <span class="fs-5 text-secondary fw-normal">&deg;</span></div>
+                                        </div>
+                                        <div class="kpi-icon bg-purple bg-opacity-25 text-purple" style="color: #a855f7; background: rgba(168, 85, 247, 0.2);">
+                                            <i class="bi bi-shield-check"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 text-muted small">
+                                <i class="bi bi-info-circle text-info me-1"></i> Predictions were inferred via Joblib model using 100 Random Forest decision trees trained on small-signal amplifier equations.
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="glass-card p-4 h-100 d-flex flex-column align-items-center justify-content-center text-center py-5">
+                            <div class="kpi-icon bg-primary bg-opacity-10 text-primary mb-3" style="width: 72px; height: 72px; font-size: 2.25rem;">
+                                <i class="bi bi-cpu"></i>
+                            </div>
+                            <h4 class="text-white h5">Awaiting Input Parameters</h4>
+                            <p class="text-secondary small max-w-xs mb-4" style="max-width: 320px;">
+                                Fill in component values on the left panel or click <strong>Load Presets</strong> to test pre-configured amplifier parameters.
+                            </p>
+                            <button type="button" class="btn btn-outline-glow btn-sm rounded-pill" onclick="loadPreset(47000, 10000, 4700, 1000, 1.0, 2.2)">
+                                Load Standard Demo Values
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function loadPreset(r1, r2, rc, re, c1, c2) {
+    document.getElementById('id_r1').value = r1;
+    document.getElementById('id_r2').value = r2;
+    document.getElementById('id_rc').value = rc;
+    document.getElementById('id_re').value = re;
+    document.getElementById('id_c1').value = c1;
+    document.getElementById('id_c2').value = c2;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block title %}About Project | ECE ML Surrogate Model{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+
+            <!-- Title Header -->
+            <div class="text-center mb-5">
+                <span class="badge bg-info bg-opacity-25 text-info px-3 py-2 rounded-pill mb-2">ECE Final Year Major Project</span>
+                <h1 class="text-white fw-bold display-5">Machine Learning-Based Surrogate Model for Circuit Performance Prediction</h1>
+                <p class="text-secondary max-w-2xl mx-auto">Replacing differential equation SPICE solvers with high-speed Random Forest regression models.</p>
+            </div>
+
+            <!-- Content Card 1: Problem Statement & Solution -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <div class="glass-card p-4 h-100">
+                        <div class="kpi-icon bg-danger bg-opacity-25 text-danger mb-3">
+                            <i class="bi bi-exclamation-triangle"></i>
+                        </div>
+                        <h4 class="text-white h5">Traditional SPICE Bottleneck</h4>
+                        <p class="text-secondary small">
+                            In analog integrated circuit (IC) design, iterative design space exploration requires running thousands of transient and AC SPICE simulations (LTspice, HSPICE, Spectre). Each simulation solves non-linear differential equations, taking seconds to minutes per iteration, drastically slowing down automatic sizing and optimization routines.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="glass-card p-4 h-100">
+                        <div class="kpi-icon bg-success bg-opacity-25 text-success mb-3">
+                            <i class="bi bi-cpu"></i>
+                        </div>
+                        <h4 class="text-white h5">ML Surrogate Solution</h4>
+                        <p class="text-secondary small">
+                            A surrogate model acts as an approximation function $f(X) \approx Y$. Once trained on a comprehensive synthetic physics dataset, the Random Forest model maps component values ($R_1, R_2, R_C, R_E, C_1, C_2$) directly to performance outputs ($\text{Gain}, f_c, \phi_m$) in sub-millisecond execution times.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Equations & Methodology -->
+            <div class="glass-card p-4 mb-4">
+                <h4 class="text-white h5 mb-3"><i class="bi bi-calculator me-2 text-primary"></i> Underpinning Physics & Circuit Equations</h4>
+                <div class="row g-3 text-secondary small">
+                    <div class="col-md-4">
+                        <div class="p-3 bg-dark bg-opacity-50 rounded border border-secondary border-opacity-25 h-100">
+                            <h6 class="text-primary fw-bold">1. Voltage Gain ($A_v$)</h6>
+                            <p class="mb-0">
+                                $$A_v = 20 \log_{10} \left| \frac{R_C}{r_e + R_E} \right|$$
+                                Small-signal emitter resistance $r_e = \frac{V_T}{I_E}$ where thermal voltage $V_T \approx 26\text{mV}$.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 bg-dark bg-opacity-50 rounded border border-secondary border-opacity-25 h-100">
+                            <h6 class="text-success fw-bold">2. Cutoff Frequency ($f_c$)</h6>
+                            <p class="mb-0">
+                                $$f_c \approx \frac{1}{2\pi \cdot (R_{eq1} C_1 + R_C C_2)}$$
+                                Determined by low-frequency pole locations established by coupling capacitors $C_1$ and $C_2$.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 bg-dark bg-opacity-50 rounded border border-secondary border-opacity-25 h-100">
+                            <h6 class="text-purple fw-bold" style="color: #a855f7;">3. Phase Margin ($\phi_m$)</h6>
+                            <p class="mb-0">
+                                $$\phi_m = 180^\circ - \sum \arctan\left(\frac{f}{f_p}\right)$$
+                                Reflects dynamic frequency response stability across multi-pole RC networks.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Technology Stack -->
+            <div class="glass-card p-4">
+                <h4 class="text-white h5 mb-3"><i class="bi bi-stack me-2 text-info"></i> Full Technology Stack</h4>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="badge bg-dark border border-secondary p-2"><i class="bi bi-filetype-py me-1 text-warning"></i> Python 3.x</span>
+                    <span class="badge bg-dark border border-secondary p-2"><i class="bi bi-globe me-1 text-success"></i> Django Framework</span>
+                    <span class="badge bg-dark border border-secondary p-2"><i class="bi bi-database me-1 text-info"></i> SQLite Database</span>
+                    <span class="badge bg-dark border border-secondary p-2"><i class="bi bi-tree me-1 text-success"></i> Scikit-Learn</span>
+                    <span class="badge bg-dark border border-secondary p-2"><i class="bi bi-file-earmark-spreadsheet me-1 text-primary"></i> Pandas & NumPy</span>
+                    <span class="badge bg-dark border border-secondary p-2"><i class="bi bi-bootstrap me-1 text-purple" style="color: #a855f7;"></i> Bootstrap 5</span>
+                    <span class="badge bg-dark border border-secondary p-2"><i class="bi bi-bar-chart me-1 text-danger"></i> Chart.js</span>
+                    <span class="badge bg-dark border border-secondary p-2"><i class="bi bi-box me-1 text-light"></i> Joblib Serialization</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

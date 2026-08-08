@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+
+{% block title %}AI Circuit Component Optimizer | CircuitAI CAD Platform{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    
+    <!-- Top Header Bar -->
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-25">AI Module</span>
+                <span class="text-muted small">&bull; Inverse Synthesis &amp; E24 Component Selection</span>
+            </div>
+            <h2 class="text-white fw-bold mb-0">
+                <i class="bi bi-magic text-warning me-2"></i> AI Circuit Optimization Engine
+            </h2>
+        </div>
+        <div>
+            <a href="{% url 'home' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="bi bi-arrow-left me-1"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="row g-4 mb-4">
+        <!-- Target Specs Form -->
+        <div class="col-lg-5">
+            <div class="glass-card p-4">
+                <h4 class="text-white h5 mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+                    <i class="bi bi-sliders text-warning me-2"></i> Target Specification Inputs
+                </h4>
+
+                <form method="post" action="{% url 'optimizer' %}">
+                    {% csrf_token %}
+                    
+                    <!-- Circuit Selector -->
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small">Select Circuit Architecture</label>
+                        <select name="circuit_slug" class="form-select bg-dark text-white border-secondary">
+                            {% for c in all_circuits %}
+                                <option value="{{ c.slug }}" {% if selected_circuit and selected_circuit.slug == c.slug %}selected{% endif %}>
+                                    {{ c.title }} ({{ c.category }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary small">Target Cutoff Freq (Hz)</label>
+                            <input type="number" step="any" name="target_fc" class="form-control bg-dark text-white border-secondary" value="1000">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary small">Target Voltage Gain (dB)</label>
+                            <input type="number" step="any" name="target_gain" class="form-control bg-dark text-white border-secondary" value="20">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary small">Target Bandwidth (Hz)</label>
+                            <input type="number" step="any" name="target_bw" class="form-control bg-dark text-white border-secondary" value="10000">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary small">Target Output Voltage (V)</label>
+                            <input type="number" step="any" name="target_vout" class="form-control bg-dark text-white border-secondary" value="12">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-warning w-100 mt-4 py-2 text-dark fw-bold">
+                        <i class="bi bi-cpu-fill me-2"></i> Calculate Optimal Component Values
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- AI Optimization Results -->
+        <div class="col-lg-7">
+            {% if opt_result and opt_result.success %}
+                <div class="glass-card p-4">
+                    <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+                        <h4 class="text-white h5 mb-0">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i> Recommended E24 Component Values
+                        </h4>
+                        <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50">
+                            Score: {{ opt_result.score }}%
+                        </span>
+                    </div>
+
+                    <!-- Recommended Component Cards -->
+                    <div class="row g-3 mb-4">
+                        {% for comp, val in opt_result.recommended_components.items %}
+                            <div class="col-md-4">
+                                <div class="p-3 rounded-3 bg-dark bg-opacity-50 border border-warning border-opacity-50 text-center">
+                                    <small class="text-uppercase text-muted font-mono d-block mb-1">{{ comp }}</small>
+                                    <div class="fs-4 fw-bold text-warning font-mono">{{ val }}</div>
+                                    <small class="text-secondary" style="font-size: 0.65rem;">Optimal E24 Series</small>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- AI Synthesis Explanation -->
+                    <div class="p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 mb-4">
+                        <h6 class="text-white fw-bold mb-2"><i class="bi bi-info-circle text-info me-1"></i> AI Synthesis Breakdown</h6>
+                        <p class="text-secondary small mb-0">{{ opt_result.explanation }}</p>
+                    </div>
+
+                    <!-- Achieved Performance Metrics -->
+                    <h5 class="text-white h6 mb-3">Predicted Metrics with Optimized Components</h5>
+                    <div class="row g-2">
+                        {% for m in opt_result.achieved_metrics %}
+                            <div class="col-md-6">
+                                <div class="p-2 px-3 rounded-3 bg-dark bg-opacity-40 border border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
+                                    <span class="text-white small font-mono">{{ m.label }}</span>
+                                    <span class="fw-bold text-{{ m.color }} font-mono">{{ m.value }} {{ m.unit }}</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="glass-card p-4 h-100 d-flex flex-column align-items-center justify-content-center text-center py-5">
+                    <div class="kpi-icon bg-warning bg-opacity-10 text-warning mb-3" style="width: 72px; height: 72px; font-size: 2.25rem;">
+                        <i class="bi bi-magic"></i>
+                    </div>
+                    <h4 class="text-white h5">Ready for Optimization</h4>
+                    <p class="text-secondary small max-w-xs mb-4" style="max-width: 360px;">
+                        Select a circuit type and enter your target specifications on the left to calculate optimal standard component values.
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
