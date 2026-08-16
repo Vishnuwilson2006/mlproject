@@ -1,0 +1,263 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}What-If Sensitivity &amp; Robust Design – CircuitAI ECE Research Suite{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 py-2">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb text-muted small">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}" class="text-info text-decoration-none">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'research_dashboard' %}" class="text-info text-decoration-none">Research Suite</a></li>
+            <li class="breadcrumb-item active text-white" aria-current="page">Sensitivity &amp; Robust Design</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold text-white mb-1">
+                <i class="bi bi-sliders2-vertical text-purple me-2" style="color:#c084fc;"></i>What-If Sensitivity &amp; Robust Design
+            </h2>
+            <p class="text-muted mb-0 small">
+                Evaluate single-parameter What-If variations (-20% to +20%), rank global component sensitivity, Tornado charts, and synthesize optimal robust component values.
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'research_export' 'sensitivity' 'csv' %}?circuit={{ config.slug }}" class="btn btn-outline-light btn-sm rounded-pill">
+                <i class="bi bi-file-earmark-spreadsheet me-1 text-success"></i> Export CSV
+            </a>
+            <a href="{% url 'research_export' 'sensitivity' 'json' %}?circuit={{ config.slug }}" class="btn btn-outline-light btn-sm rounded-pill">
+                <i class="bi bi-filetype-json me-1 text-info"></i> Export JSON
+            </a>
+            <a href="{% url 'research_export' 'sensitivity' 'pdf' %}?circuit={{ config.slug }}" class="btn btn-gradient-primary btn-sm rounded-pill px-3" style="background: linear-gradient(135deg, #7c3aed, #2563eb);">
+                <i class="bi bi-file-earmark-pdf me-1"></i> Generate PDF Report
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Controls Column -->
+        <div class="col-lg-4">
+            <div class="card border-0 glass-card p-3 shadow-lg mb-4">
+                <h5 class="fw-bold text-white mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-sliders text-purple" style="color:#c084fc;"></i> What-If Controls
+                </h5>
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">1. Select Target Circuit</label>
+                        <select name="circuit" class="form-select bg-dark text-white border-secondary" onchange="window.location.href='?circuit='+this.value">
+                            {% for c in all_circuits %}
+                                <option value="{{ c.slug }}" {% if c.slug == config.slug %}selected{% endif %}>{{ c.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">2. Component Under What-If Sweep</label>
+                        <select name="selected_component" class="form-select bg-dark text-white border-secondary font-mono">
+                            {% for inp in config.inputs %}
+                                <option value="{{ inp.name }}" {% if inp.name == selected_component %}selected{% endif %}>{{ inp.label }} ({{ inp.name }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">3. Nominal Component Inputs</label>
+                        <div class="p-2 rounded bg-dark bg-opacity-50 border border-secondary">
+                            {% for inp in config.inputs %}
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between text-muted small mb-1">
+                                        <span>{{ inp.label }}</span>
+                                        <span class="font-mono text-white">{{ inp.default }} {{ inp.unit }}</span>
+                                    </div>
+                                    <input type="number" step="any" name="{{ inp.name }}" value="{{ inp.default }}" class="form-control form-control-sm bg-dark text-white border-secondary font-mono">
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-purple w-100 rounded-pill py-2 font-mono fw-bold text-white" style="background:#7c3aed;">
+                        <i class="bi bi-graph-up-arrow me-1"></i> Calculate Sensitivity &amp; Robust Design
+                    </button>
+                </form>
+            </div>
+
+            <!-- Robust Design Synthesis Card -->
+            <div class="card border-0 glass-card p-3 shadow-lg border-start border-4 border-success">
+                <h5 class="fw-bold text-success mb-2 d-flex align-items-center justify-content-between">
+                    <span><i class="bi bi-shield-check me-2"></i>Robust Design Recommendation</span>
+                    <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 font-mono">Score: {{ res.robust_design.robustness_score }}%</span>
+                </h5>
+                <p class="text-muted small mb-3">{{ res.robust_design.explanation }}</p>
+
+                <div class="p-2 rounded bg-dark bg-opacity-50 border border-secondary mb-3 font-mono text-white small">
+                    <strong class="text-info d-block mb-1">Recommended Component Set:</strong>
+                    {% for k, v in res.robust_design.recommended_components.items %}
+                        <div class="d-flex justify-content-between border-bottom border-secondary border-opacity-25 py-1">
+                            <span>{{ k }}:</span>
+                            <span class="text-success fw-bold">{{ v }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="small text-muted mb-1">Expected Output Ranges under ±5% Tolerance:</div>
+                <ul class="list-unstyled text-white font-mono small mb-0">
+                    <li>Gain Range: <strong class="text-info">{{ res.robust_design.expected_gain_range }}</strong></li>
+                    <li>Cutoff Range: <strong class="text-warning">{{ res.robust_design.expected_fc_range }}</strong></li>
+                    <li>Phase Margin Range: <strong class="text-purple" style="color:#c084fc;">{{ res.robust_design.expected_pm_range }}</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Output Column -->
+        <div class="col-lg-8">
+            <!-- Global Sensitivity Percentage Breakdown -->
+            <div class="card border-0 glass-card p-3 shadow-lg mb-4">
+                <h5 class="fw-bold text-white mb-3">
+                    <i class="bi bi-pie-chart-fill text-purple me-2" style="color:#c084fc;"></i>Global Component Sensitivity Scores (%)
+                </h5>
+                <div class="row g-3">
+                    {% for comp_name, score in res.sensitivity_scores.items %}
+                        <div class="col-6 col-md-3">
+                            <div class="p-3 rounded bg-dark bg-opacity-50 border border-secondary text-center">
+                                <span class="text-muted small fw-bold d-block">{{ comp_name }} Influence</span>
+                                <span class="fs-3 fw-extrabold text-purple font-mono" style="color:#c084fc;">{{ score }}%</span>
+                                <div class="progress mt-2" style="height: 4px;">
+                                    <div class="progress-bar bg-purple" style="width: {{ score }}%; background:#7c3aed;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- What-If Sweep Table -->
+            <div class="card border-0 glass-card p-3 shadow-lg mb-4">
+                <h5 class="fw-bold text-white mb-3">
+                    <i class="bi bi-table me-2 text-info"></i>What-If Parameter Sweep (-20% to +20% for {{ selected_component }})
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle small mb-0">
+                        <thead>
+                            <tr class="text-muted">
+                                <th>Variation Step</th>
+                                <th>{{ selected_component }} Value</th>
+                                {% for out_name, out_val in res.variation_table.0.outputs.items %}
+                                    <th>{{ out_name|title }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody class="font-mono">
+                            {% for row in res.variation_table %}
+                                <tr {% if row.step_pct == '0%' %}class="table-primary bg-opacity-25"{% endif %}>
+                                    <td class="fw-bold {% if row.step_pct == '0%' %}text-info{% else %}text-muted{% endif %}">{{ row.step_pct }}</td>
+                                    <td class="text-white fw-bold">{{ row.comp_val }}</td>
+                                    {% for out_name, out_val in row.outputs.items %}
+                                        <td class="text-info">{{ out_val }}</td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Graphs Grid -->
+            <div class="card border-0 glass-card p-3 shadow-lg">
+                <h5 class="fw-bold text-white mb-3 d-flex align-items-center justify-content-between">
+                    <span><i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Tornado &amp; Sensitivity Visualization</span>
+                    <span class="badge bg-secondary text-info font-mono" style="font-size:0.75rem;">Sobol / Gradient Sensitivity</span>
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="p-2 rounded bg-dark bg-opacity-50 border border-secondary">
+                            <h6 class="text-muted small fw-bold text-center mb-2">1. Sensitivity Ranking Bar Chart</h6>
+                            <canvas id="chartSensRank" height="200"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-2 rounded bg-dark bg-opacity-50 border border-secondary">
+                            <h6 class="text-muted small fw-bold text-center mb-2">2. Sensitivity Tornado Chart</h6>
+                            <canvas id="chartTornado" height="200"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <div class="p-2 rounded bg-dark bg-opacity-50 border border-secondary">
+                            <h6 class="text-muted small fw-bold text-center mb-2">3. What-If Variation Curve (-20% to +20%)</h6>
+                            <canvas id="chartWhatIfCurve" height="160"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const sensScores = {{ res.sensitivity_scores|safe }};
+    const tornado = {{ res.tornado_data|safe }};
+    const varTable = {{ res.variation_table|safe }};
+
+    if(sensScores) {
+        // 1. Sensitivity Rank
+        new Chart(document.getElementById('chartSensRank'), {
+            type: 'bar',
+            data: {
+                labels: Object.keys(sensScores),
+                datasets: [{
+                    label: 'Sensitivity %',
+                    data: Object.values(sensScores),
+                    backgroundColor: 'rgba(124, 58, 237, 0.7)',
+                    borderColor: '#7c3aed',
+                    borderWidth: 1
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } } }
+        });
+    }
+
+    if(tornado) {
+        // 2. Tornado
+        new Chart(document.getElementById('chartTornado'), {
+            type: 'bar',
+            data: {
+                labels: tornado.map(t => t.component),
+                datasets: [{
+                    label: 'Output Swing Range',
+                    data: tornado.map(t => t.swing),
+                    backgroundColor: 'rgba(251, 191, 36, 0.7)'
+                }]
+            },
+            options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { y: { ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } } }
+        });
+    }
+
+    if(varTable) {
+        // 3. What-If Curve
+        const steps = varTable.map(r => r.step_pct);
+        const firstOutKey = Object.keys(varTable[0].outputs)[0];
+        const outVals = varTable.map(r => r.outputs[firstOutKey]);
+
+        new Chart(document.getElementById('chartWhatIfCurve'), {
+            type: 'line',
+            data: {
+                labels: steps,
+                datasets: [{
+                    label: firstOutKey.toUpperCase() + ' Output Variation',
+                    data: outVals,
+                    borderColor: '#38bdf8',
+                    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: { responsive: true, scales: { y: { ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } } }
+        });
+    }
+});
+</script>
+{% endblock %}

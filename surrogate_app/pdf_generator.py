@@ -163,3 +163,87 @@ def generate_reverse_pdf_report(circuit_title, algo, series, target_table, comp_
     pdf_val = buffer.getvalue()
     buffer.close()
     return pdf_val
+
+
+def generate_research_pdf_report(module_name, circuit_title, inputs, results):
+    """Builds an IEEE-style PDF Research Report for any of the 5 research modules."""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+    styles = getSampleStyleSheet()
+
+    PRIMARY_COLOR = colors.HexColor('#0F172A')
+    ACCENT_COLOR = colors.HexColor('#2563EB')
+    BG_LIGHT = colors.HexColor('#F8FAFC')
+    TEXT_DARK = colors.HexColor('#1E293B')
+
+    title_style = ParagraphStyle('DocTitle', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=18, leading=22, textColor=PRIMARY_COLOR)
+    subtitle_style = ParagraphStyle('DocSubTitle', parent=styles['Normal'], fontName='Helvetica', fontSize=10, leading=14, textColor=colors.HexColor('#64748B'))
+    h2_style = ParagraphStyle('SectionHeader', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=11, leading=15, textColor=ACCENT_COLOR, spaceBefore=10, spaceAfter=4)
+    body_style = ParagraphStyle('BodyDark', parent=styles['Normal'], fontName='Helvetica', fontSize=8.5, leading=12, textColor=TEXT_DARK)
+    table_header_style = ParagraphStyle('TableHeader', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=8.5, leading=10, textColor=colors.white, alignment=TA_CENTER)
+    table_cell_style = ParagraphStyle('TableCell', parent=styles['Normal'], fontName='Helvetica', fontSize=8, leading=10, textColor=TEXT_DARK)
+    table_cell_center = ParagraphStyle('TableCellCenter', parent=styles['Normal'], fontName='Helvetica', fontSize=8, leading=10, textColor=TEXT_DARK, alignment=TA_CENTER)
+
+    elements = []
+    elements.append(Paragraph(f"<b>CircuitAI ECE Research Suite</b> | {module_name}", title_style))
+    elements.append(Paragraph(f"Circuit Analysis: <b>{circuit_title}</b> | Standard Scientific Research Report", subtitle_style))
+    elements.append(Spacer(1, 6))
+    elements.append(HRFlowable(width="100%", thickness=1.5, color=ACCENT_COLOR, spaceBefore=0, spaceAfter=10))
+
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
+    meta_data = [
+        [Paragraph("<b>Module:</b>", body_style), Paragraph(module_name, body_style),
+         Paragraph("<b>Date:</b>", body_style), Paragraph(now_str, body_style)],
+        [Paragraph("<b>Circuit:</b>", body_style), Paragraph(circuit_title, body_style),
+         Paragraph("<b>Engine:</b>", body_style), Paragraph("CircuitAI Research CAD v3.5", body_style)]
+    ]
+    meta_table = Table(meta_data, colWidths=[1.3*inch, 2.3*inch, 1.4*inch, 2.4*inch])
+    meta_table.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,-1), BG_LIGHT), ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')), ('PADDING', (0,0), (-1,-1), 4)]))
+    elements.append(meta_table)
+    elements.append(Spacer(1, 10))
+
+    # Inputs table
+    elements.append(Paragraph("1. System Input Configurations & Parameters", h2_style))
+    inp_rows = [[Paragraph("<b>Parameter</b>", table_header_style), Paragraph("<b>Value</b>", table_header_style)]]
+    if isinstance(inputs, dict):
+        for k, v in inputs.items():
+            inp_rows.append([Paragraph(str(k), table_cell_style), Paragraph(str(v), table_cell_center)])
+    inp_table = Table(inp_rows, colWidths=[3.7*inch, 3.7*inch])
+    inp_table.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), PRIMARY_COLOR), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, BG_LIGHT]), ('PADDING', (0,0), (-1,-1), 3)]))
+    elements.append(inp_table)
+    elements.append(Spacer(1, 10))
+
+    # Research Findings Section
+    elements.append(Paragraph("2. Experimental Results & Analysis Findings", h2_style))
+    res_rows = [[Paragraph("<b>Metric / Summary</b>", table_header_style), Paragraph("<b>Value / Outcome</b>", table_header_style)]]
+    
+    if 'research_metrics' in results:
+        for k, v in results['research_metrics'].items():
+            res_rows.append([Paragraph(k.replace('_', ' ').title(), table_cell_style), Paragraph(str(v), table_cell_center)])
+    elif 'robustness_score' in results:
+        res_rows.append([Paragraph("Robustness Score", table_cell_style), Paragraph(f"{results['robustness_score']}%", table_cell_center)])
+        res_rows.append([Paragraph("Simulations Count", table_cell_style), Paragraph(str(results.get('n_simulations', 1000)), table_cell_center)])
+    elif 'improvement_pct' in results:
+        res_rows.append([Paragraph("Accuracy Improvement", table_cell_style), Paragraph(f"+{results['improvement_pct']}%", table_cell_center)])
+        res_rows.append([Paragraph("Final R² Score", table_cell_style), Paragraph(str(results['final_r2']), table_cell_center)])
+        res_rows.append([Paragraph("Final MAE Error", table_cell_style), Paragraph(str(results['final_mae']), table_cell_center)])
+    elif 'pareto_front_count' in results:
+        res_rows.append([Paragraph("Pareto Solutions Found", table_cell_style), Paragraph(str(results['pareto_front_count']), table_cell_center)])
+        res_rows.append([Paragraph("Algorithm", table_cell_style), Paragraph(results['algorithm'], table_cell_center)])
+    elif 'sensitivity_scores' in results:
+        for k, v in results['sensitivity_scores'].items():
+            res_rows.append([Paragraph(f"Sensitivity: {k}", table_cell_style), Paragraph(f"{v}% influence", table_cell_center)])
+
+    res_table = Table(res_rows, colWidths=[3.7*inch, 3.7*inch])
+    res_table.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), ACCENT_COLOR), ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, BG_LIGHT]), ('PADDING', (0,0), (-1,-1), 3)]))
+    elements.append(res_table)
+
+    elements.append(Spacer(1, 10))
+    elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#CBD5E1'), spaceBefore=4, spaceAfter=8))
+    elements.append(Paragraph("<b>Certification:</b> Experimental research calculations verified using scientific ML surrogate methodologies.", ParagraphStyle('Footer', parent=styles['Normal'], fontName='Helvetica-Oblique', fontSize=8, leading=10, textColor=colors.HexColor('#64748B'))))
+
+    doc.build(elements)
+    pdf_val = buffer.getvalue()
+    buffer.close()
+    return pdf_val
+

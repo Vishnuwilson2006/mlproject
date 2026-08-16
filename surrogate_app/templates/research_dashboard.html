@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ECE Research Dashboard &amp; Analytics – CircuitAI Suite{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 py-2">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb text-muted small">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}" class="text-info text-decoration-none">Dashboard</a></li>
+            <li class="breadcrumb-item active text-white" aria-current="page">Research Suite Analytics</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold text-white mb-1">
+                <i class="bi bi-journal-text text-amber me-2" style="color:#fbbf24;"></i>CircuitAI Research Suite &amp; ECE Analytics
+            </h2>
+            <p class="text-muted mb-0 small">
+                Integrated research summary tracking model uncertainty, Monte Carlo robustness, active learning gains, Pareto optimal fronts, and sensitivity metrics.
+            </p>
+        </div>
+        <div>
+            <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 px-3 py-2 rounded-pill font-mono">
+                <i class="bi bi-check-circle-fill me-1"></i> 5 Advanced Research Modules Online
+            </span>
+        </div>
+    </div>
+
+    <!-- 6 Professional KPI Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4 col-xl-2">
+            <div class="card border-0 glass-card p-3 shadow-sm h-100 border-top border-3 border-primary">
+                <span class="text-muted small fw-bold">Prediction Confidence</span>
+                <div class="fs-2 fw-extrabold text-primary font-mono my-1">{{ avg_confidence }}%</div>
+                <span class="text-muted small">Uncertainty Bounds</span>
+            </div>
+        </div>
+
+        <div class="col-md-4 col-xl-2">
+            <div class="card border-0 glass-card p-3 shadow-sm h-100 border-top border-3 border-success">
+                <span class="text-muted small fw-bold">Monte Carlo Yield</span>
+                <div class="fs-2 fw-extrabold text-success font-mono my-1">{{ avg_robustness }}%</div>
+                <span class="text-muted small">Tolerance Robustness</span>
+            </div>
+        </div>
+
+        <div class="col-md-4 col-xl-2">
+            <div class="card border-0 glass-card p-3 shadow-sm h-100 border-top border-3 border-warning">
+                <span class="text-muted small fw-bold">Active Learning Gain</span>
+                <div class="fs-2 fw-extrabold text-warning font-mono my-1">+{{ avg_improvement }}%</div>
+                <span class="text-muted small">Sample Efficiency</span>
+            </div>
+        </div>
+
+        <div class="col-md-4 col-xl-2">
+            <div class="card border-0 glass-card p-3 shadow-sm h-100 border-top border-3 border-info">
+                <span class="text-muted small fw-bold">Pareto Front Sets</span>
+                <div class="fs-2 fw-extrabold text-info font-mono my-1">{{ total_pareto }}</div>
+                <span class="text-muted small">Multi-Objective Solutions</span>
+            </div>
+        </div>
+
+        <div class="col-md-4 col-xl-2">
+            <div class="card border-0 glass-card p-3 shadow-sm h-100 border-top border-3 border-purple">
+                <span class="text-muted small fw-bold">Sensitivity Runs</span>
+                <div class="fs-2 fw-extrabold text-purple font-mono my-1" style="color:#c084fc;">{{ total_sensitivity }}</div>
+                <span class="text-muted small">What-If Sweeps</span>
+            </div>
+        </div>
+
+        <div class="col-md-4 col-xl-2">
+            <div class="card border-0 glass-card p-3 shadow-sm h-100 border-top border-3 border-secondary">
+                <span class="text-muted small fw-bold">Robust Design Score</span>
+                <div class="fs-2 fw-extrabold text-white font-mono my-1">94.3%</div>
+                <span class="text-muted small">Optimal Stability</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5 Module Launch Cards -->
+    <h5 class="fw-bold text-white mb-3">
+        <i class="bi bi-grid-fill text-primary me-2"></i>Research Modules Quick Launch
+    </h5>
+
+    <div class="row g-4 mb-4">
+        <!-- Module 1 -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-0 glass-card p-3 h-100 shadow-sm d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="badge bg-primary p-2 rounded-3 text-white">
+                            <i class="bi bi-shield-check fs-5"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold text-white mb-0">1. Uncertainty &amp; Confidence Analysis</h6>
+                            <span class="text-muted small font-mono">/uncertainty-analysis/</span>
+                        </div>
+                    </div>
+                    <p class="text-muted small">Quantify ML model prediction reliability, ensemble variance, and 95% confidence intervals.</p>
+                </div>
+                <a href="{% url 'uncertainty_analysis' %}" class="btn btn-outline-primary btn-sm rounded-pill w-100 font-mono">
+                    Open Module <i class="bi bi-arrow-right me-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Module 2 -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-0 glass-card p-3 h-100 shadow-sm d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="badge bg-success p-2 rounded-3 text-white">
+                            <i class="bi bi-dice-5 fs-5"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold text-white mb-0">2. Monte Carlo Tolerance Analysis</h6>
+                            <span class="text-muted small font-mono">/monte-carlo-analysis/</span>
+                        </div>
+                    </div>
+                    <p class="text-muted small">Simulate manufacturing component tolerances ($\pm 1\%$ to $\pm 20\%$) across 10,000 iterations.</p>
+                </div>
+                <a href="{% url 'monte_carlo_analysis' %}" class="btn btn-outline-success btn-sm rounded-pill w-100 font-mono">
+                    Open Module <i class="bi bi-arrow-right me-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Module 3 -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-0 glass-card p-3 h-100 shadow-sm d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="badge bg-warning p-2 rounded-3 text-dark">
+                            <i class="bi bi-graph-up fs-5"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold text-white mb-0">3. Active Learning &amp; Dataset Expansion</h6>
+                            <span class="text-muted small font-mono">/active-learning/</span>
+                        </div>
+                    </div>
+                    <p class="text-muted small">Smart uncertainty query sampling to retrain ML models with minimal extra samples.</p>
+                </div>
+                <a href="{% url 'active_learning' %}" class="btn btn-outline-warning btn-sm rounded-pill w-100 font-mono">
+                    Open Module <i class="bi bi-arrow-right me-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Module 4 -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-0 glass-card p-3 h-100 shadow-sm d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="badge bg-info p-2 rounded-3 text-dark">
+                            <i class="bi bi-layers fs-5"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold text-white mb-0">4. Multi-Objective Pareto Optimization</h6>
+                            <span class="text-muted small font-mono">/pareto-optimization/</span>
+                        </div>
+                    </div>
+                    <p class="text-muted small">Synthesize non-dominated 3D Pareto Fronts across conflicting gain/power/bandwidth objectives.</p>
+                </div>
+                <a href="{% url 'pareto_optimization' %}" class="btn btn-outline-info btn-sm rounded-pill w-100 font-mono">
+                    Open Module <i class="bi bi-arrow-right me-1"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Module 5 -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-0 glass-card p-3 h-100 shadow-sm d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="badge p-2 rounded-3 text-white" style="background:#7c3aed;">
+                            <i class="bi bi-sliders2-vertical fs-5"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold text-white mb-0">5. Sensitivity &amp; Robust Design</h6>
+                            <span class="text-muted small font-mono">/sensitivity-analysis/</span>
+                        </div>
+                    </div>
+                    <p class="text-muted small">What-If parameter sweeps (-20% to +20%), Tornado charts, and robust component recommendations.</p>
+                </div>
+                <a href="{% url 'sensitivity_analysis' %}" class="btn btn-outline-purple btn-sm rounded-pill w-100 font-mono" style="border-color:#7c3aed; color:#c084fc;">
+                    Open Module <i class="bi bi-arrow-right me-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

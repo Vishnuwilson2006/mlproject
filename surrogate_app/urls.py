@@ -11,6 +11,15 @@ urlpatterns = [
     path('reverse-design/history/', views.reverse_history_view, name='reverse_history'),
     path('reverse-design/export/pdf/<int:record_id>/', views.reverse_export_pdf_view, name='reverse_export_pdf'),
     
+    # 5 NEW RESEARCH MODULES
+    path('uncertainty-analysis/', views.uncertainty_analysis_view, name='uncertainty_analysis'),
+    path('monte-carlo-analysis/', views.monte_carlo_analysis_view, name='monte_carlo_analysis'),
+    path('active-learning/', views.active_learning_view, name='active_learning'),
+    path('pareto-optimization/', views.pareto_optimization_view, name='pareto_optimization'),
+    path('sensitivity-analysis/', views.sensitivity_analysis_view, name='sensitivity_analysis'),
+    path('research-dashboard/', views.research_dashboard_view, name='research_dashboard'),
+    path('research/export/<str:module_key>/<str:fmt>/', views.research_export_view, name='research_export'),
+
     # Advanced AI Features & Optimizers
     path('optimizer/', views.optimizer_page_view, name='optimizer'),
     path('api/chat/', views.api_chat_view, name='api_chat'),
@@ -31,3 +40,4 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
 ]
+

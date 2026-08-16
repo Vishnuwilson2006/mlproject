@@ -82,3 +82,131 @@ class ReverseDesignHistory(models.Model):
             return json.loads(self.predicted_params_json)
         except Exception:
             return {}
+
+
+class UncertaintyAnalysisHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='uncertainty_analyses')
+    circuit_slug = models.CharField(max_length=64, default='common-emitter')
+    circuit_title = models.CharField(max_length=128, default='Common Emitter Amplifier')
+    model_type = models.CharField(max_length=64, default='Random Forest Ensemble')
+    inputs_json = models.TextField(default='{}')
+    results_json = models.TextField(default='{}')
+    confidence_score = models.FloatField(default=95.0)
+    mae = models.FloatField(default=0.15)
+    rmse = models.FloatField(default=0.22)
+    r2_score = models.FloatField(default=0.985)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Uncertainty Analysis Record'
+
+    def get_inputs(self):
+        try: return json.loads(self.inputs_json)
+        except Exception: return {}
+
+    def get_results(self):
+        try: return json.loads(self.results_json)
+        except Exception: return {}
+
+
+class MonteCarloHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='monte_carlo_analyses')
+    circuit_slug = models.CharField(max_length=64, default='rc-low-pass')
+    circuit_title = models.CharField(max_length=128, default='RC Low Pass Filter')
+    tolerance_pct = models.FloatField(default=5.0)
+    simulations_count = models.IntegerField(default=1000)
+    inputs_json = models.TextField(default='{}')
+    results_json = models.TextField(default='{}')
+    robustness_score = models.FloatField(default=94.5)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Monte Carlo Record'
+
+    def get_inputs(self):
+        try: return json.loads(self.inputs_json)
+        except Exception: return {}
+
+    def get_results(self):
+        try: return json.loads(self.results_json)
+        except Exception: return {}
+
+
+class ActiveLearningHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='active_learning_runs')
+    circuit_slug = models.CharField(max_length=64, default='rc-low-pass')
+    circuit_title = models.CharField(max_length=128, default='RC Low Pass Filter')
+    initial_samples = models.IntegerField(default=50)
+    added_samples = models.IntegerField(default=50)
+    final_samples = models.IntegerField(default=100)
+    iterations = models.IntegerField(default=5)
+    sampling_strategy = models.CharField(max_length=64, default='Uncertainty Sampling')
+    initial_r2 = models.FloatField(default=0.88)
+    final_r2 = models.FloatField(default=0.982)
+    initial_mae = models.FloatField(default=0.85)
+    final_mae = models.FloatField(default=0.21)
+    improvement_pct = models.FloatField(default=75.3)
+    results_json = models.TextField(default='{}')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Active Learning Record'
+
+    def get_results(self):
+        try: return json.loads(self.results_json)
+        except Exception: return {}
+
+
+class ParetoOptimizationHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='pareto_optimizations')
+    circuit_slug = models.CharField(max_length=64, default='common-emitter')
+    circuit_title = models.CharField(max_length=128, default='Common Emitter Amplifier')
+    algorithm = models.CharField(max_length=64, default='NSGA-II / Multi-Objective PSO')
+    objectives_json = models.TextField(default='[]')
+    pareto_solutions_json = models.TextField(default='[]')
+    designs_json = models.TextField(default='{}')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Pareto Optimization Record'
+
+    def get_objectives(self):
+        try: return json.loads(self.objectives_json)
+        except Exception: return []
+
+    def get_solutions(self):
+        try: return json.loads(self.pareto_solutions_json)
+        except Exception: return []
+
+    def get_designs(self):
+        try: return json.loads(self.designs_json)
+        except Exception: return {}
+
+
+class SensitivityAnalysisHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='sensitivity_analyses')
+    circuit_slug = models.CharField(max_length=64, default='common-emitter')
+    circuit_title = models.CharField(max_length=128, default='Common Emitter Amplifier')
+    selected_component = models.CharField(max_length=32, default='RC')
+    variation_range_pct = models.FloatField(default=20.0)
+    sensitivity_scores_json = models.TextField(default='{}')
+    robust_design_json = models.TextField(default='{}')
+    robustness_score = models.FloatField(default=93.8)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Sensitivity Analysis Record'
+
+    def get_sensitivity_scores(self):
+        try: return json.loads(self.sensitivity_scores_json)
+        except Exception: return {}
+
+    def get_robust_design(self):
+        try: return json.loads(self.robust_design_json)
+        except Exception: return {}
+

@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Uncertainty &amp; Confidence Analysis – CircuitAI ECE Research Suite{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 py-2">
+    <!-- Breadcrumb & Header -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb text-muted small">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}" class="text-info text-decoration-none">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'research_dashboard' %}" class="text-info text-decoration-none">Research Suite</a></li>
+            <li class="breadcrumb-item active text-white" aria-current="page">Uncertainty &amp; Confidence Analysis</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold text-white mb-1">
+                <i class="bi bi-shield-check text-primary me-2"></i>Uncertainty &amp; Confidence Analysis
+            </h2>
+            <p class="text-muted mb-0 small">
+                Quantify ML surrogate model prediction reliability, prediction interval bounds ($\hat{y} \pm 1.96\sigma$), and model uncertainty across operational circuit parameters.
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'research_export' 'uncertainty' 'csv' %}?circuit={{ config.slug }}" class="btn btn-outline-light btn-sm rounded-pill">
+                <i class="bi bi-file-earmark-spreadsheet me-1 text-success"></i> Export CSV
+            </a>
+            <a href="{% url 'research_export' 'uncertainty' 'json' %}?circuit={{ config.slug }}" class="btn btn-outline-light btn-sm rounded-pill">
+                <i class="bi bi-filetype-json me-1 text-info"></i> Export JSON
+            </a>
+            <a href="{% url 'research_export' 'uncertainty' 'pdf' %}?circuit={{ config.slug }}" class="btn btn-gradient-primary btn-sm rounded-pill px-3" style="background: linear-gradient(135deg, #2563eb, #7c3aed);">
+                <i class="bi bi-file-earmark-pdf me-1"></i> Generate PDF Report
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Interactive Controls Card -->
+        <div class="col-lg-4">
+            <div class="card border-0 glass-card p-3 shadow-lg">
+                <h5 class="fw-bold text-white mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-sliders text-info"></i> Analysis Setup &amp; Inputs
+                </h5>
+                <form method="POST" id="uncertaintyForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">1. Select Target Circuit</label>
+                        <select name="circuit" class="form-select bg-dark text-white border-secondary" onchange="window.location.href='?circuit='+this.value">
+                            {% for c in all_circuits %}
+                                <option value="{{ c.slug }}" {% if c.slug == config.slug %}selected{% endif %}>{{ c.title }} ({{ c.category }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">2. Trained Surrogate ML Model</label>
+                        <select name="model_type" class="form-select bg-dark text-white border-secondary">
+                            <option value="Random Forest Ensemble" {% if model_type == 'Random Forest Ensemble' %}selected{% endif %}>Random Forest Ensemble (Default)</option>
+                            <option value="Neural Network Surrogate" {% if model_type == 'Neural Network Surrogate' %}selected{% endif %}>Deep Neural Network Surrogate</option>
+                            <option value="Gradient Boosting Regressor" {% if model_type == 'Gradient Boosting Regressor' %}selected{% endif %}>Gradient Boosting Regressor</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">3. Component Input Values</label>
+                        <div class="p-2 rounded bg-dark bg-opacity-50 border border-secondary">
+                            {% for inp in config.inputs %}
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between text-muted small mb-1">
+                                        <span>{{ inp.label }} ({{ inp.name }})</span>
+                                        <span class="font-mono text-white fw-bold"><span id="val_{{ inp.name }}">{{ inp.default }}</span> {{ inp.unit }}</span>
+                                    </div>
+                                    <input type="number" step="any" name="{{ inp.name }}" value="{{ inp.default }}" class="form-control form-control-sm bg-dark text-white border-secondary font-mono" oninput="document.getElementById('val_{{ inp.name }}').innerText = this.value">
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 rounded-pill py-2 font-mono fw-bold">
+                        <i class="bi bi-lightning-charge-fill me-1"></i> Run Uncertainty Analysis
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Output Cards & Confidence Bounds -->
+        <div class="col-lg-8">
+            <div class="row g-3 mb-4" id="outputCardsContainer">
+                {% for card in res.output_cards %}
+                    <div class="col-md-6 col-xl-4">
+                        <div class="card border-0 glass-card p-3 h-100 shadow-sm position-relative overflow-hidden">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="text-muted small fw-bold">{{ card.label }}</span>
+                                <span class="badge bg-{{ card.reliability_badge }} bg-opacity-25 text-{{ card.reliability_badge }} border border-{{ card.reliability_badge }} border-opacity-25" style="font-size: 0.65rem;">
+                                    {{ card.model_reliability }}
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-baseline gap-2 mb-1">
+                                <span class="fs-3 fw-extrabold text-white font-mono">{{ card.predicted_value }}</span>
+                                <span class="text-muted small">{{ card.unit }}</span>
+                            </div>
+                            <div class="small text-muted mb-2">
+                                Prediction Interval: <strong class="text-info font-mono">{{ card.prediction_interval }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-25 text-muted small">
+                                <span>Confidence: <strong class="text-success font-mono">{{ card.confidence_score }}%</strong></span>
+                                <span>Uncertainty: <strong class="text-warning font-mono">{{ card.uncertainty_range }}</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Chart Cards Section -->
+            <div class="row g-4 mb-4">
+                <!-- 1. Prediction vs Uncertainty -->
+                <div class="col-md-6">
+                    <div class="card border-0 glass-card p-3 shadow-lg h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-white mb-0"><i class="bi bi-bar-chart-fill text-primary me-2"></i>Prediction vs Uncertainty</h6>
+                            <button class="btn btn-sm btn-outline-light py-0 px-2 download-chart-btn" data-chart="chartPredVsUncertainty"><i class="bi bi-download"></i> PNG</button>
+                        </div>
+                        <div style="position: relative; height: 350px; width: 100%;">
+                            <canvas id="chartPredVsUncertainty"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Prediction Interval -->
+                <div class="col-md-6">
+                    <div class="card border-0 glass-card p-3 shadow-lg h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-white mb-0"><i class="bi bi-graph-up me-2 text-info"></i>Prediction Interval (Lower / Upper Bounds)</h6>
+                            <button class="btn btn-sm btn-outline-light py-0 px-2 download-chart-btn" data-chart="chartPredInterval"><i class="bi bi-download"></i> PNG</button>
+                        </div>
+                        <div style="position: relative; height: 350px; width: 100%;">
+                            <canvas id="chartPredInterval"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Confidence Score -->
+                <div class="col-md-6">
+                    <div class="card border-0 glass-card p-3 shadow-lg h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-white mb-0"><i class="bi bi-check-circle-fill text-success me-2"></i>Confidence Score (%)</h6>
+                            <button class="btn btn-sm btn-outline-light py-0 px-2 download-chart-btn" data-chart="chartConfidence"><i class="bi bi-download"></i> PNG</button>
+                        </div>
+                        <div style="position: relative; height: 350px; width: 100%;">
+                            <canvas id="chartConfidence"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Residual / Error Distribution -->
+                <div class="col-md-6">
+                    <div class="card border-0 glass-card p-3 shadow-lg h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-white mb-0"><i class="bi bi-diagram-2 text-purple me-2"></i>Residual / Error Distribution</h6>
+                            <button class="btn btn-sm btn-outline-light py-0 px-2 download-chart-btn" data-chart="chartResiduals"><i class="bi bi-download"></i> PNG</button>
+                        </div>
+                        <div style="position: relative; height: 350px; width: 100%;">
+                            <canvas id="chartResiduals"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Model Performance Metrics -->
+                <div class="col-12">
+                    <div class="card border-0 glass-card p-3 shadow-lg">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-white mb-0"><i class="bi bi-speedometer text-warning me-2"></i>Model Performance Validation (R², MAE, RMSE)</h6>
+                            <button class="btn btn-sm btn-outline-light py-0 px-2 download-chart-btn" data-chart="chartModelMetrics"><i class="bi bi-download"></i> PNG</button>
+                        </div>
+                        <div style="position: relative; height: 350px; width: 100%;">
+                            <canvas id="chartModelMetrics"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scientific Research Summary Table -->
+            <div class="card border-0 glass-card p-3 shadow-lg">
+                <h5 class="fw-bold text-white mb-3">
+                    <i class="bi bi-journal-check text-warning me-2"></i>Model Reliability Summary &amp; Scientific Metrics
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle small mb-3">
+                        <thead>
+                            <tr class="text-muted">
+                                <th>Mean Pred Error</th>
+                                <th>MAE</th>
+                                <th>RMSE</th>
+                                <th>R² Score</th>
+                                <th>Avg Uncertainty</th>
+                                <th>Confidence Score</th>
+                            </tr>
+                        </thead>
+                        <tbody class="font-mono">
+                            <tr>
+                                <td>{{ res.research_metrics.mean_pred_error }}</td>
+                                <td class="text-info">{{ res.research_metrics.mae }}</td>
+                                <td class="text-warning">{{ res.research_metrics.rmse }}</td>
+                                <td class="text-success fw-bold">{{ res.research_metrics.r2 }}</td>
+                                <td>{{ res.research_metrics.avg_uncertainty }}</td>
+                                <td class="text-success fw-bold">{{ res.research_metrics.avg_confidence }}%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="p-3 rounded bg-primary bg-opacity-10 border border-primary border-opacity-25 text-info small">
+                    <i class="bi bi-info-circle-fill me-2"></i><strong>Research Insight:</strong> {{ res.research_metrics.reliability_summary }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Embedded Backend Data Script -->
+<script id="analysis-data" type="application/json">{{ res_json|safe }}</script>
+<script src="{% static 'js/uncertainty_analysis.js' %}"></script>
+{% endblock %}

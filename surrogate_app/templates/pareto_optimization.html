@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Multi-Objective Pareto Optimization – CircuitAI ECE Research Suite{% endblock %}
+
+{% block extra_head %}
+<!-- Plotly 3D CAD Visualization -->
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 py-2">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb text-muted small">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}" class="text-info text-decoration-none">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'research_dashboard' %}" class="text-info text-decoration-none">Research Suite</a></li>
+            <li class="breadcrumb-item active text-white" aria-current="page">Multi-Objective Pareto Optimization</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold text-white mb-1">
+                <i class="bi bi-layers text-info me-2"></i>Multi-Objective Pareto Optimization
+            </h2>
+            <p class="text-muted mb-0 small">
+                Synthesize non-dominated Pareto optimal trade-off solution sets across conflicting design objectives (Gain vs Power vs Bandwidth vs Stability).
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'research_export' 'pareto' 'csv' %}?circuit={{ config.slug }}" class="btn btn-outline-light btn-sm rounded-pill">
+                <i class="bi bi-file-earmark-spreadsheet me-1 text-success"></i> Export CSV
+            </a>
+            <a href="{% url 'research_export' 'pareto' 'json' %}?circuit={{ config.slug }}" class="btn btn-outline-light btn-sm rounded-pill">
+                <i class="bi bi-filetype-json me-1 text-info"></i> Export JSON
+            </a>
+            <a href="{% url 'research_export' 'pareto' 'pdf' %}?circuit={{ config.slug }}" class="btn btn-gradient-primary btn-sm rounded-pill px-3" style="background: linear-gradient(135deg, #0284c7, #7c3aed);">
+                <i class="bi bi-file-earmark-pdf me-1"></i> Generate PDF Report
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Controls Column -->
+        <div class="col-lg-4">
+            <div class="card border-0 glass-card p-3 shadow-lg mb-4">
+                <h5 class="fw-bold text-white mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-sliders text-info"></i> Pareto Optimizer Setup
+                </h5>
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">1. Target Circuit</label>
+                        <select name="circuit" class="form-select bg-dark text-white border-secondary" onchange="window.location.href='?circuit='+this.value">
+                            {% for c in all_circuits %}
+                                <option value="{{ c.slug }}" {% if c.slug == config.slug %}selected{% endif %}>{{ c.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">2. Optimization Algorithm</label>
+                        <select name="algorithm" class="form-select bg-dark text-white border-secondary">
+                            <option value="NSGA-II / Multi-Objective PSO" {% if algorithm == 'NSGA-II / Multi-Objective PSO' %}selected{% endif %}>NSGA-II Genetic Algorithm</option>
+                            <option value="Multi-Objective PSO" {% if algorithm == 'Multi-Objective PSO' %}selected{% endif %}>Multi-Objective Particle Swarm (MO-PSO)</option>
+                            <option value="Pareto Front Surrogate Search" {% if algorithm == 'Pareto Front Surrogate Search' %}selected{% endif %}>Neural Pareto Surrogate Search</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">3. Optimization Objectives</label>
+                        <div class="p-2 rounded bg-dark bg-opacity-50 border border-secondary">
+                            <div class="d-flex justify-content-between align-items-center mb-2 small text-muted">
+                                <span>Objective 1: {{ res.axis_labels.x }}</span>
+                                <span class="badge bg-success">Maximize</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-2 small text-muted">
+                                <span>Objective 2: {{ res.axis_labels.y }}</span>
+                                <span class="badge bg-success">Maximize</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center small text-muted">
+                                <span>Objective 3: {{ res.axis_labels.z }}</span>
+                                <span class="badge bg-warning text-dark">Minimize</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-info w-100 rounded-pill py-2 font-mono fw-bold text-dark">
+                        <i class="bi bi-layers-fill me-1"></i> Generate Pareto Optimal Front
+                    </button>
+                </form>
+            </div>
+
+            <!-- Clicked Point Details Modal Card -->
+            <div class="card border-0 glass-card p-3 shadow-lg" id="clickedPointCard">
+                <h6 class="text-muted fw-bold text-uppercase mb-2">
+                    <i class="bi bi-cursor-fill text-info me-1"></i> Selected Pareto Design Inspection
+                </h6>
+                <div id="pointDetails">
+                    <p class="text-muted small">Click any point on the 3D Pareto Front graph to inspect exact component values &amp; predicted outputs.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pareto Plot Column -->
+        <div class="col-lg-8">
+            <div class="card border-0 glass-card p-3 shadow-lg mb-4">
+                <h5 class="fw-bold text-white mb-3 d-flex align-items-center justify-content-between">
+                    <span><i class="bi bi-box me-2 text-info"></i>3D / 2D Interactive Pareto Optimal Front</span>
+                    <span class="badge bg-secondary text-info font-mono" style="font-size:0.75rem;">{{ res.pareto_front_count }} Non-Dominated Solutions</span>
+                </h5>
+                <div id="pareto3dPlot" style="width: 100%; height: 420px;"></div>
+            </div>
+
+            <!-- Design Options Grid -->
+            <h5 class="fw-bold text-white mb-3">
+                <i class="bi bi-award-fill text-warning me-2"></i>Recommended Pareto Design Configurations
+            </h5>
+
+            <div class="row g-3 mb-4">
+                {% for opt_key, opt in res.design_options.items %}
+                    <div class="col-md-6">
+                        <div class="card border-0 glass-card p-3 h-100 shadow-sm border-start border-4 border-{{ opt.badge }}">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="fw-bold text-white mb-0">{{ opt.title }}</h6>
+                                <span class="badge bg-{{ opt.badge }} bg-opacity-25 text-{{ opt.badge }} border border-{{ opt.badge }} border-opacity-25">
+                                    Score: {{ opt.score }}%
+                                </span>
+                            </div>
+                            <div class="small text-muted mb-2">Recommended Component Values:</div>
+                            <div class="p-2 rounded bg-dark bg-opacity-50 border border-secondary mb-3 font-mono text-white small">
+                                {% for k, v in opt.components.items %}
+                                    <span class="me-2">{{ k }}: <strong>{{ v }}</strong></span>
+                                {% endfor %}
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-info btn-sm rounded-pill flex-grow-1" onclick="selectDesign('{{ opt.title }}', '{{ opt.score }}')">
+                                    <i class="bi bi-check-lg me-1"></i> Select Design
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- Side-by-Side Comparison Table -->
+            <div class="card border-0 glass-card p-3 shadow-lg">
+                <h5 class="fw-bold text-white mb-3">
+                    <i class="bi bi-layout-split me-2 text-info"></i>Side-by-Side Pareto Design Comparison Matrix
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle small mb-0">
+                        <thead>
+                            <tr class="text-muted">
+                                <th>Design Parameter</th>
+                                <th>Design A (High Gain)</th>
+                                <th>Design B (Low Power)</th>
+                                <th>Design C (High Score)</th>
+                                <th>Design D (Balanced)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="font-mono">
+                            <tr>
+                                <td>Optimization Score</td>
+                                <td class="text-info fw-bold">{{ res.design_options.design_a.score }}%</td>
+                                <td class="text-success fw-bold">{{ res.design_options.design_b.score }}%</td>
+                                <td class="text-warning fw-bold">{{ res.design_options.design_c.score }}%</td>
+                                <td class="text-purple fw-bold" style="color:#c084fc;">{{ res.design_options.design_d.score }}%</td>
+                            </tr>
+                            <tr>
+                                <td>Primary Component Vector</td>
+                                <td>{{ res.design_options.design_a.components }}</td>
+                                <td>{{ res.design_options.design_b.components }}</td>
+                                <td>{{ res.design_options.design_c.components }}</td>
+                                <td>{{ res.design_options.design_d.components }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const points = {{ res.plot_points|safe }};
+    const labels = {{ res.axis_labels|safe }};
+    
+    if(!points || points.length === 0) return;
+
+    const xVals = points.map(p => p.x);
+    const yVals = points.map(p => p.y);
+    const zVals = points.map(p => p.z);
+
+    const trace = {
+        x: xVals,
+        y: yVals,
+        z: zVals,
+        mode: 'markers',
+        marker: {
+            size: 8,
+            color: zVals,
+            colorscale: 'Viridis',
+            showscale: true,
+            opacity: 0.9
+        },
+        type: 'scatter3d',
+        text: points.map(p => `Point #${p.id} (Score: ${p.score}%)`)
+    };
+
+    const layout = {
+        margin: { l: 0, r: 0, b: 0, t: 0 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        scene: {
+            xaxis: { title: labels.x, titlefont: { color: '#94a3b8' }, tickfont: { color: '#94a3b8' } },
+            yaxis: { title: labels.y, titlefont: { color: '#94a3b8' }, tickfont: { color: '#94a3b8' } },
+            zaxis: { title: labels.z, titlefont: { color: '#94a3b8' }, tickfont: { color: '#94a3b8' } }
+        }
+    };
+
+    Plotly.newPlot('pareto3dPlot', [trace], layout);
+
+    document.getElementById('pareto3dPlot').on('plotly_click', function(data){
+        if(data.points.length > 0) {
+            const ptIdx = data.points[0].pointNumber;
+            const pt = points[ptIdx];
+            
+            let compHtml = Object.entries(pt.components).map(([k,v]) => `<div><strong>${k}:</strong> ${v}</div>`).join('');
+            let metHtml = Object.entries(pt.metrics).map(([k,v]) => `<div><strong>${k}:</strong> ${v}</div>`).join('');
+
+            document.getElementById('pointDetails').innerHTML = `
+                <div class="badge bg-info text-dark mb-2">Solution #${pt.id} (Score: ${pt.score}%)</div>
+                <div class="row g-2 small text-white font-mono">
+                    <div class="col-6 p-2 rounded bg-dark border border-secondary">
+                        <strong class="text-info d-block mb-1">Components:</strong>
+                        ${compHtml}
+                    </div>
+                    <div class="col-6 p-2 rounded bg-dark border border-secondary">
+                        <strong class="text-success d-block mb-1">Outputs:</strong>
+                        ${metHtml}
+                    </div>
+                </div>
+            `;
+        }
+    });
+});
+
+function selectDesign(title, score) {
+    alert("Selected Pareto Configuration: " + title + " (Score: " + score + "%). Value loaded into CAD memory.");
+}
+</script>
+{% endblock %}

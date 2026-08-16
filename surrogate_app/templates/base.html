@@ -136,16 +136,38 @@
         </div>
 
         <div class="sidebar-menu">
-            <div class="sidebar-label">Navigation Menu</div>
+            <div class="sidebar-label">Core Engine Navigation</div>
             <a href="{% url 'home' %}" class="sidebar-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
                 <i class="bi bi-speedometer2"></i> Dashboard
             </a>
             <a href="{% url 'circuit_detail' 'rc-low-pass' %}" class="sidebar-link {% if 'circuit/' in request.path %}active{% endif %}">
-                <i class="bi bi-cpu text-info"></i> Circuit Prediction
+                <i class="bi bi-cpu text-info"></i> AI Prediction
             </a>
             <a href="{% url 'reverse_design' %}" class="sidebar-link {% if request.resolver_match.url_name == 'reverse_design' %}active{% endif %}" style="background: rgba(124, 58, 237, 0.15); border-left: 3px solid #7c3aed;">
                 <i class="bi bi-magic text-purple" style="color: #a855f7;"></i> AI Reverse Design
             </a>
+
+            <div class="sidebar-label">Advanced Research Modules</div>
+            <a href="{% url 'uncertainty_analysis' %}" class="sidebar-link {% if request.resolver_match.url_name == 'uncertainty_analysis' %}active{% endif %}">
+                <i class="bi bi-shield-check text-primary"></i> Uncertainty Analysis
+            </a>
+            <a href="{% url 'monte_carlo_analysis' %}" class="sidebar-link {% if request.resolver_match.url_name == 'monte_carlo_analysis' %}active{% endif %}">
+                <i class="bi bi-dice-5 text-success"></i> Monte Carlo Analysis
+            </a>
+            <a href="{% url 'active_learning' %}" class="sidebar-link {% if request.resolver_match.url_name == 'active_learning' %}active{% endif %}">
+                <i class="bi bi-graph-up text-warning"></i> Active Learning
+            </a>
+            <a href="{% url 'pareto_optimization' %}" class="sidebar-link {% if request.resolver_match.url_name == 'pareto_optimization' %}active{% endif %}">
+                <i class="bi bi-layers text-info"></i> Pareto Optimization
+            </a>
+            <a href="{% url 'sensitivity_analysis' %}" class="sidebar-link {% if request.resolver_match.url_name == 'sensitivity_analysis' %}active{% endif %}">
+                <i class="bi bi-sliders2-vertical text-purple" style="color:#c084fc;"></i> Sensitivity &amp; Robust Design
+            </a>
+            <a href="{% url 'research_dashboard' %}" class="sidebar-link {% if request.resolver_match.url_name == 'research_dashboard' %}active{% endif %}">
+                <i class="bi bi-journal-text text-amber" style="color:#fbbf24;"></i> Research Dashboard
+            </a>
+
+            <div class="sidebar-label">History &amp; Analytics</div>
             <a href="{% url 'history' %}" class="sidebar-link {% if request.resolver_match.url_name == 'history' %}active{% endif %}">
                 <i class="bi bi-clock-history"></i> Prediction History
             </a>
@@ -156,7 +178,7 @@
                 <i class="bi bi-graph-up-arrow"></i> Analytics
             </a>
             <a href="{% url 'optimizer' %}" class="sidebar-link {% if request.resolver_match.url_name == 'optimizer' %}active{% endif %}">
-                <i class="bi bi-sliders text-success"></i> Reports &amp; Optimizer
+                <i class="bi bi-file-earmark-bar-graph text-success"></i> Reports &amp; Analytics
             </a>
             <a href="{% url 'settings' %}" class="sidebar-link {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">
                 <i class="bi bi-gear"></i> Settings
@@ -170,6 +192,7 @@
                     <i class="bi bi-box-arrow-in-right text-info"></i> Login / Register
                 </a>
             {% endif %}
+
 
             <!-- Quick Circuit List -->
             <div class="sidebar-label">15 Circuits Quick CAD</div>

@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Component Tolerance &amp; Monte Carlo Analysis – CircuitAI ECE Research Suite{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-2 py-2">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb text-muted small">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}" class="text-info text-decoration-none">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'research_dashboard' %}" class="text-info text-decoration-none">Research Suite</a></li>
+            <li class="breadcrumb-item active text-white" aria-current="page">Monte Carlo Tolerance Analysis</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold text-white mb-1">
+                <i class="bi bi-dice-5 text-success me-2"></i>Component Tolerance &amp; Monte Carlo Analysis
+            </h2>
+            <p class="text-muted mb-0 small">
+                Evaluate manufacturing tolerance variations ($\pm 1\%$ to $\pm 20\%$) across component values using Gaussian Monte Carlo simulations ($N=100$ to $10,000$).
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'research_export' 'monte-carlo' 'csv' %}?circuit={{ config.slug }}" class="btn btn-outline-light btn-sm rounded-pill">
+                <i class="bi bi-file-earmark-spreadsheet me-1 text-success"></i> Export CSV
+            </a>
+            <a href="{% url 'research_export' 'monte-carlo' 'json' %}?circuit={{ config.slug }}" class="btn btn-outline-light btn-sm rounded-pill">
+                <i class="bi bi-filetype-json me-1 text-info"></i> Export JSON
+            </a>
+            <a href="{% url 'research_export' 'monte-carlo' 'pdf' %}?circuit={{ config.slug }}" class="btn btn-gradient-primary btn-sm rounded-pill px-3" style="background: linear-gradient(135deg, #059669, #2563eb);">
+                <i class="bi bi-file-earmark-pdf me-1"></i> Generate PDF Report
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Controls Column -->
+        <div class="col-lg-4">
+            <div class="card border-0 glass-card p-3 shadow-lg mb-4">
+                <h5 class="fw-bold text-white mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-sliders text-success"></i> Monte Carlo Setup
+                </h5>
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">1. Target Circuit</label>
+                        <select name="circuit" class="form-select bg-dark text-white border-secondary" onchange="window.location.href='?circuit='+this.value">
+                            {% for c in all_circuits %}
+                                <option value="{{ c.slug }}" {% if c.slug == config.slug %}selected{% endif %}>{{ c.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">2. Component Tolerance Rating</label>
+                        <select name="tolerance" class="form-select bg-dark text-white border-secondary">
+                            <option value="1.0" {% if tolerance_pct == 1.0 %}selected{% endif %}>±1% (Precision Resistors / C0G Caps)</option>
+                            <option value="2.0" {% if tolerance_pct == 2.0 %}selected{% endif %}>±2% (Tight Tolerance)</option>
+                            <option value="5.0" {% if tolerance_pct == 5.0 %}selected{% endif %}>±5% (Standard Commercial E24)</option>
+                            <option value="10.0" {% if tolerance_pct == 10.0 %}selected{% endif %}>±10% (General Purpose E12)</option>
+                            <option value="20.0" {% if tolerance_pct == 20.0 %}selected{% endif %}>±20% (High Variance / Electrolytic)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">3. Number of Monte Carlo Simulations</label>
+                        <select name="simulations" class="form-select bg-dark text-white border-secondary font-mono">
+                            <option value="100" {% if n_simulations == 100 %}selected{% endif %}>100 Simulations (Fast Sweep)</option>
+                            <option value="500" {% if n_simulations == 500 %}selected{% endif %}>500 Simulations</option>
+                            <option value="1000" {% if n_simulations == 1000 %}selected{% endif %}>1,000 Simulations (Standard)</option>
+                            <option value="5000" {% if n_simulations == 5000 %}selected{% endif %}>5,000 Simulations (High Precision)</option>
+                            <option value="10000" {% if n_simulations == 10000 %}selected{% endif %}>10,000 Simulations (Full Production Yield)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">4. Nominal Component Values</label>
+                        <div class="p-2 rounded bg-dark bg-opacity-50 border border-secondary">
+                            {% for inp in config.inputs %}
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between text-muted small mb-1">
+                                        <span>{{ inp.label }}</span>
+                                        <span class="font-mono text-white">{{ inp.default }} {{ inp.unit }}</span>
+                                    </div>
+                                    <input type="number" step="any" name="{{ inp.name }}" value="{{ inp.default }}" class="form-control form-control-sm bg-dark text-white border-secondary font-mono">
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100 rounded-pill py-2 font-mono fw-bold">
+                        <i class="bi bi-dice-5-fill me-1"></i> Run Monte Carlo Simulation
+                    </button>
+                </form>
+            </div>
+
+            <!-- Robustness Score Card -->
+            <div class="card border-0 glass-card p-4 shadow-lg text-center bg-gradient">
+                <h6 class="text-muted text-uppercase fw-bold mb-2">Overall Circuit Robustness Score</h6>
+                <div class="display-3 fw-extrabold text-success font-mono my-2" id="robustnessScoreVal">{{ res.robustness_score }}%</div>
+                <p class="text-muted small mb-0" id="robustnessExpText">{{ res.robustness_explanation }}</p>
+            </div>
+        </div>
+
+        <!-- Results & Distribution Graphs -->
+        <div class="col-lg-8">
+            <!-- Statistical Summary Table -->
+            <div class="card border-0 glass-card p-3 shadow-lg mb-4">
+                <h5 class="fw-bold text-white mb-3">
+                    <i class="bi bi-table text-info me-2"></i>Statistical Metrics &amp; 95% Yield Distribution
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle small mb-0">
+                        <thead>
+                            <tr class="text-muted">
+                                <th>Metric</th>
+                                <th>Nominal</th>
+                                <th>Mean</th>
+                                <th>Median</th>
+                                <th>Min / Max</th>
+                                <th>Std Dev ($\sigma$)</th>
+                                <th>95% Range ($P_{2.5}-P_{97.5}$)</th>
+                                <th>Yield Pass %</th>
+                            </tr>
+                        </thead>
+                        <tbody class="font-mono" id="statsTableBody">
+                            {% for out in res.outputs_analysis %}
+                                <tr>
+                                    <td class="fw-bold text-white">{{ out.label }}</td>
+                                    <td>{{ out.nominal }} {{ out.unit }}</td>
+                                    <td class="text-info">{{ out.mean }}</td>
+                                    <td>{{ out.median }}</td>
+                                    <td class="text-muted">{{ out.min }} / {{ out.max }}</td>
+                                    <td class="text-warning">{{ out.std }}</td>
+                                    <td class="text-purple" style="color:#c084fc;">{{ out.range_95 }}</td>
+                                    <td><span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25">{{ out.target_prob }}%</span></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Distribution Charts Grid -->
+            <div class="row g-4 mb-4">
+                <!-- 1. Primary Output Histogram -->
+                <div class="col-md-6">
+                    <div class="card border-0 glass-card p-3 shadow-lg h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-white mb-0"><i class="bi bi-bar-chart-line text-success me-2"></i>{{ res.outputs_analysis.0.label }} Distribution Histogram</h6>
+                            <button class="btn btn-sm btn-outline-light py-0 px-2 download-chart-btn" data-chart="chartHistGain"><i class="bi bi-download"></i> PNG</button>
+                        </div>
+                        <div style="position: relative; height: 350px; width: 100%;">
+                            <canvas id="chartHistGain"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Secondary Output Distribution -->
+                <div class="col-md-6">
+                    <div class="card border-0 glass-card p-3 shadow-lg h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-white mb-0"><i class="bi bi-activity text-info me-2"></i>{{ res.outputs_analysis.1.label|default:"Cutoff Frequency" }} Distribution</h6>
+                            <button class="btn btn-sm btn-outline-light py-0 px-2 download-chart-btn" data-chart="chartHistFc"><i class="bi bi-download"></i> PNG</button>
+                        </div>
+                        <div style="position: relative; height: 350px; width: 100%;">
+                            <canvas id="chartHistFc"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Phase Margin / 3rd Output Distribution -->
+                <div class="col-md-6">
+                    <div class="card border-0 glass-card p-3 shadow-lg h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-white mb-0"><i class="bi bi-graph-up text-purple me-2"></i>{{ res.outputs_analysis.2.label|default:"Phase Margin" }} Distribution</h6>
+                            <button class="btn btn-sm btn-outline-light py-0 px-2 download-chart-btn" data-chart="chartHistPm"><i class="bi bi-download"></i> PNG</button>
+                        </div>
+                        <div style="position: relative; height: 350px; width: 100%;">
+                            <canvas id="chartHistPm"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Quantile Box Plot Overview -->
+                <div class="col-md-6">
+                    <div class="card border-0 glass-card p-3 shadow-lg h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-white mb-0"><i class="bi bi-box me-2 text-warning"></i>Quantile Box Plot Overview</h6>
+                            <button class="btn btn-sm btn-outline-light py-0 px-2 download-chart-btn" data-chart="chartBoxPlot"><i class="bi bi-download"></i> PNG</button>
+                        </div>
+                        <div style="position: relative; height: 350px; width: 100%;">
+                            <canvas id="chartBoxPlot"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Component Tolerance vs Output Scatter -->
+                <div class="col-md-6">
+                    <div class="card border-0 glass-card p-3 shadow-lg h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-white mb-0"><i class="bi bi-bounding-box-circles me-2 text-purple"></i>Component Tolerance vs Output Scatter</h6>
+                            <button class="btn btn-sm btn-outline-light py-0 px-2 download-chart-btn" data-chart="chartScatterTolerance"><i class="bi bi-download"></i> PNG</button>
+                        </div>
+                        <div style="position: relative; height: 350px; width: 100%;">
+                            <canvas id="chartScatterTolerance"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. Target Achievement Doughnut -->
+                <div class="col-md-6">
+                    <div class="card border-0 glass-card p-3 shadow-lg h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-white mb-0"><i class="bi bi-pie-chart-fill text-success me-2"></i>Target Achievement Yield Rate</h6>
+                            <button class="btn btn-sm btn-outline-light py-0 px-2 download-chart-btn" data-chart="chartDoughnutTarget"><i class="bi bi-download"></i> PNG</button>
+                        </div>
+                        <div style="position: relative; height: 350px; width: 100%;">
+                            <canvas id="chartDoughnutTarget"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. Robustness CDF -->
+                <div class="col-12">
+                    <div class="card border-0 glass-card p-3 shadow-lg">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-white mb-0"><i class="bi bi-reception-4 text-warning me-2"></i>Cumulative Probability Distribution (CDF)</h6>
+                            <button class="btn btn-sm btn-outline-light py-0 px-2 download-chart-btn" data-chart="chartRobustnessCDF"><i class="bi bi-download"></i> PNG</button>
+                        </div>
+                        <div style="position: relative; height: 350px; width: 100%;">
+                            <canvas id="chartRobustnessCDF"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Embedded Backend Data Script -->
+<script id="analysis-data" type="application/json">{{ res_json|safe }}</script>
+<script src="{% static 'js/monte_carlo_analysis.js' %}"></script>
+{% endblock %}
